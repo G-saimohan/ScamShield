@@ -10,3 +10,4 @@ tldextract
 scikit-learn
 joblib
 gunicorn
+Pillow

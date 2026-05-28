@@ -1,33 +1,528 @@
 import re
+import math
+from datetime import datetime
+from io import BytesIO
+from urllib.parse import urlparse
+
+try:
+    from PIL import Image, ImageChops, ImageFilter, ImageStat
+except ImportError:  # Pillow is optional for non-media deployments.
+    Image = None
+    ImageChops = None
+    ImageFilter = None
+    ImageStat = None
+
+
+URGENCY_TERMS = {
+    "urgent", "immediately", "now", "today", "within 24 hours", "limited time",
+    "last warning", "final notice", "act fast", "verify now", "blocked",
+}
+
+SENSITIVE_TERMS = {
+    "otp", "password", "pin", "cvv", "upi pin", "bank details", "aadhaar",
+    "pan card", "card number", "login", "verify account", "kyc",
+}
+
+AUTHORITY_TERMS = {
+    "rbi", "income tax", "police", "bank officer", "customer care", "hr team",
+    "recruiter", "government", "official", "support team",
+}
+
+REWARD_TERMS = {
+    "prize", "bonus", "cashback", "lottery", "refund", "free", "job offer",
+    "salary", "investment", "double your money", "gift",
+}
+
+THREAT_TERMS = {
+    "account will be closed", "legal action", "arrest", "penalty", "suspended",
+    "blocked permanently", "fine", "case filed",
+}
+
+SHORTENERS = {
+    "bit.ly", "tinyurl.com", "goo.gl", "t.co", "is.gd", "ow.ly", "cutt.ly",
+    "rebrand.ly", "shorturl.at", "lnkd.in",
+}
+
+BRANDS = {
+    "sbi", "hdfc", "icici", "axis", "paytm", "phonepe", "googlepay",
+    "amazon", "flipkart", "whatsapp", "telegram", "microsoft", "google",
+}
+
+
+def _contains_any(text, terms):
+    lowered = text.lower()
+    return [term for term in terms if term in lowered]
+
+
+def _extract_urls(text):
+    pattern = r"(https?://[^\s]+|www\.[^\s]+|[a-zA-Z0-9-]+\.[a-zA-Z]{2,}(?:/[^\s]*)?)"
+    urls = re.findall(pattern, text)
+    return [url.rstrip(".,;!?)\"]'") for url in urls]
+
+
+def _risk_label(score):
+    if score >= 75:
+        return "Critical"
+    if score >= 55:
+        return "High"
+    if score >= 35:
+        return "Medium"
+    return "Low"
+
+
+def _recommended_action(score):
+    if score >= 75:
+        return "Do not click links, do not share OTP or banking details, and report this immediately."
+    if score >= 55:
+        return "Verify through the official app or website before taking any action."
+    if score >= 35:
+        return "Treat this as suspicious and confirm the sender through a trusted channel."
+    return "No major scam signals found, but stay cautious with unknown senders."
+
+
+def analyze_content(content, content_type="message"):
+    text = (content or "").strip()
+    if not text:
+        return {"error": "Content is required"}
+
+    indicators = []
+    score = 8
+
+    urgency = _contains_any(text, URGENCY_TERMS)
+    if urgency:
+        score += min(24, len(urgency) * 8)
+        indicators.append({
+            "name": "Urgency manipulation",
+            "detail": "Pushes the user to act quickly without proper verification.",
+            "matches": urgency[:5],
+        })
+
+    sensitive = _contains_any(text, SENSITIVE_TERMS)
+    if sensitive:
+        score += min(28, len(sensitive) * 9)
+        indicators.append({
+            "name": "Sensitive information request",
+            "detail": "Mentions credentials, OTP, KYC, card, or banking information.",
+            "matches": sensitive[:5],
+        })
+
+    authority = _contains_any(text, AUTHORITY_TERMS)
+    if authority:
+        score += min(18, len(authority) * 6)
+        indicators.append({
+            "name": "Authority impersonation",
+            "detail": "Claims to represent a bank, company, recruiter, or official body.",
+            "matches": authority[:5],
+        })
+
+    rewards = _contains_any(text, REWARD_TERMS)
+    if rewards:
+        score += min(18, len(rewards) * 6)
+        indicators.append({
+            "name": "Reward or fake opportunity",
+            "detail": "Uses prizes, refunds, jobs, or benefits to lower suspicion.",
+            "matches": rewards[:5],
+        })
+
+    threats = _contains_any(text, THREAT_TERMS)
+    if threats:
+        score += min(20, len(threats) * 10)
+        indicators.append({
+            "name": "Fear pressure",
+            "detail": "Uses threat language to force an emotional response.",
+            "matches": threats[:5],
+        })
+
+    urls = _extract_urls(text)
+    url_findings = [analyze_url(url) for url in urls[:3]]
+    if urls:
+        score += 12
+        indicators.append({
+            "name": "External link present",
+            "detail": "Scam messages often move users to fake login or payment pages.",
+            "matches": urls[:3],
+        })
+        if any(item["risk_score"] >= 55 for item in url_findings):
+            score += 18
+
+    if re.search(r"\b\d{6}\b", text):
+        score += 12
+        indicators.append({
+            "name": "OTP-like number detected",
+            "detail": "Six-digit codes are commonly abused in OTP fraud.",
+            "matches": ["6-digit code"],
+        })
+
+    scam_probability = min(100, score)
+    risk_level = _risk_label(scam_probability)
+
+    return {
+        "content_type": content_type,
+        "scam_probability": scam_probability,
+        "risk_level": risk_level,
+        "summary": _build_summary(risk_level, indicators),
+        "indicators": indicators or [{
+            "name": "No strong scam pattern",
+            "detail": "The content does not show common urgency, credential, or impersonation signals.",
+            "matches": [],
+        }],
+        "urls": url_findings,
+        "recommended_action": _recommended_action(scam_probability),
+        "analyzed_at": datetime.utcnow().isoformat() + "Z",
+    }
+
+
+def _build_summary(risk_level, indicators):
+    if not indicators:
+        return "No major scam indicators were detected in this content."
+
+    names = ", ".join(item["name"].lower() for item in indicators[:3])
+    return f"{risk_level} risk: this content shows {names}."
+
+
+def analyze_url(url):
+    raw_url = (url or "").strip()
+    if not raw_url:
+        return {"error": "URL is required"}
+
+    normalized = raw_url if re.match(r"^https?://", raw_url, re.I) else f"http://{raw_url}"
+    parsed = urlparse(normalized)
+    domain = parsed.netloc.lower()
+    path = parsed.path.lower()
+
+    indicators = []
+    score = 5
+
+    if parsed.scheme != "https":
+        score += 18
+        indicators.append("No HTTPS encryption")
+
+    if re.fullmatch(r"\d{1,3}(?:\.\d{1,3}){3}(?::\d+)?", domain):
+        score += 24
+        indicators.append("Uses raw IP address instead of domain")
+
+    if len(raw_url) > 75:
+        score += 12
+        indicators.append("Very long URL")
+
+    if "@" in raw_url:
+        score += 18
+        indicators.append("Contains @ symbol redirection trick")
+
+    if domain.count(".") >= 3:
+        score += 12
+        indicators.append("Excessive subdomains")
+
+    if "-" in domain:
+        score += 8
+        indicators.append("Hyphenated domain often used for impersonation")
+
+    if any(shortener in domain for shortener in SHORTENERS):
+        score += 18
+        indicators.append("URL shortener hides final destination")
+
+    if any(brand in domain and not domain.endswith(f"{brand}.com") for brand in BRANDS):
+        score += 14
+        indicators.append("Possible brand impersonation")
+
+    if any(word in path for word in ("login", "verify", "kyc", "secure", "account", "payment")):
+        score += 12
+        indicators.append("Sensitive action words in URL path")
+
+    risk_score = min(100, score)
+    trust_score = max(0, 100 - risk_score)
+
+    return {
+        "url": raw_url,
+        "result": "Phishing" if risk_score >= 55 else "Suspicious" if risk_score >= 35 else "Safe",
+        "risk_score": risk_score,
+        "trust_score": trust_score,
+        "risk_level": _risk_label(risk_score),
+        "danger_indicators": indicators or ["No major URL danger indicators found"],
+        "explanation": _explain_url(risk_score, indicators),
+        "recommended_action": _recommended_action(risk_score),
+    }
+
+
+def _explain_url(score, indicators):
+    if not indicators:
+        return "The URL structure looks normal based on the available checks."
+    return f"The URL has {len(indicators)} warning signals: {', '.join(indicators[:4])}."
+
 
 def is_phishing(url):
-    suspicious_keywords = [
-        "login", "verify", "update", "secure",
-        "account", "bank", "free", "bonus"
-    ]
+    return analyze_url(url)
 
-    score = 0
 
-    if len(url) > 75:
-        score += 1
+def _image_entropy(image):
+    histogram = image.histogram()
+    total = sum(histogram)
+    if not total:
+        return 0
 
-    if re.search(r"\d+\.\d+\.\d+\.\d+", url):
-        score += 1
+    entropy = 0
+    for count in histogram:
+        if count:
+            probability = count / total
+            entropy -= probability * math.log2(probability)
+    return entropy
 
-    for word in suspicious_keywords:
-        if word in url.lower():
-            score += 1
 
-    if not url.startswith("https"):
-        score += 1
+def _variance(values):
+    if not values:
+        return 0
+    mean = sum(values) / len(values)
+    return sum((value - mean) ** 2 for value in values) / len(values)
 
-    if score >= 2:
-        return {
-            "result": "Phishing",
-            "risk_score": score
-        }
+
+def _analyze_image_pixels(file_bytes):
+    if Image is None:
+        return {}, [{
+            "name": "Pixel engine unavailable",
+            "detail": "Install Pillow to enable image-level forensic checks.",
+        }], 0
+
+    image = Image.open(BytesIO(file_bytes))
+    image.load()
+    rgb = image.convert("RGB")
+    grayscale = image.convert("L")
+    width, height = image.size
+    exif = image.getexif()
+
+    indicators = []
+    score_delta = 0
+
+    camera_tags = {271, 272, 305, 306, 36867}  # Make, Model, Software, DateTime, DateTimeOriginal
+    present_tags = {tag for tag in camera_tags if exif.get(tag)}
+    software = str(exif.get(305, "")).lower()
+
+    if not exif:
+        score_delta += 24
+        indicators.append({
+            "name": "No camera details found",
+            "detail": "The file does not show normal camera information. AI-made or edited images often miss this.",
+        })
+    elif not ({271, 272, 36867} & present_tags):
+        score_delta += 14
+        indicators.append({
+            "name": "Camera details look incomplete",
+            "detail": "Some file details exist, but camera name or capture time is missing.",
+        })
     else:
-        return {
-            "result": "Safe",
-            "risk_score": score
-        }
+        score_delta -= 8
+        indicators.append({
+            "name": "Camera details found",
+            "detail": "The image has camera-like file details, but this alone does not prove it is real.",
+        })
+
+    generator_software = ["midjourney", "stable diffusion", "dall", "comfyui", "automatic1111", "runway", "leonardo"]
+    if any(term in software for term in generator_software):
+        score_delta += 34
+        indicators.append({
+            "name": "AI tool name found",
+            "detail": "The file details mention a known AI image tool.",
+        })
+
+    sample = rgb.resize((min(320, width), min(320, height)))
+    gray_sample = sample.convert("L")
+    edge = gray_sample.filter(ImageFilter.FIND_EDGES)
+    edge_stat = ImageStat.Stat(edge)
+    edge_mean = edge_stat.mean[0]
+
+    entropy = _image_entropy(sample)
+    blur = gray_sample.filter(ImageFilter.GaussianBlur(radius=1.2))
+    noise_image = ImageChops.difference(gray_sample, blur)
+    noise_stat = ImageStat.Stat(noise_image)
+    noise_level = noise_stat.stddev[0]
+
+    colors = sample.convert("P", palette=Image.Palette.ADAPTIVE, colors=96).getcolors(maxcolors=40000) or []
+    color_variance = _variance([count for count, _ in colors])
+
+    if entropy < 5.1:
+        score_delta += 12
+        indicators.append({
+            "name": "Texture looks too simple",
+            "detail": "Some parts of the image look smoother or simpler than normal camera photos.",
+        })
+    elif entropy > 7.25:
+        score_delta -= 5
+        indicators.append({
+            "name": "Many natural details found",
+            "detail": "The image has many small details, which can happen in real photos and high-quality AI images.",
+        })
+
+    if noise_level < 3.5:
+        score_delta += 16
+        indicators.append({
+            "name": "Camera grain is weak",
+            "detail": "Real camera photos usually have tiny sensor grain. This image has very little.",
+        })
+    elif noise_level > 10:
+        score_delta -= 4
+        indicators.append({
+            "name": "Camera-like grain found",
+            "detail": "Some natural-looking camera grain is present.",
+        })
+
+    if edge_mean < 8:
+        score_delta += 10
+        indicators.append({
+            "name": "Edges look too smooth",
+            "detail": "Some borders in the image are very smooth, which can happen in AI-made images.",
+        })
+
+    if color_variance > 800_000:
+        score_delta += 8
+        indicators.append({
+            "name": "Colors look unusually grouped",
+            "detail": "The color pattern is a little unusual and needs caution.",
+        })
+
+    metrics = {
+        "width": width,
+        "height": height,
+        "entropy": round(entropy, 3),
+        "edge_mean": round(edge_mean, 3),
+        "noise_level": round(noise_level, 3),
+        "color_cluster_variance": round(color_variance, 3),
+        "has_exif": bool(exif),
+    }
+    return metrics, indicators, score_delta
+
+
+def analyze_media_file(filename, mimetype, size_bytes, width=None, height=None, duration=None, file_bytes=None):
+    name = (filename or "").lower()
+    mimetype = (mimetype or "").lower()
+    indicators = []
+    score = 18
+
+    is_video = mimetype.startswith("video/")
+    is_image = mimetype.startswith("image/")
+
+    if not is_image and not is_video:
+        score += 20
+        indicators.append({
+            "name": "Unsupported media type",
+            "detail": "The uploaded file does not look like a standard image or video format.",
+        })
+
+    if size_bytes < 120_000:
+        score += 16
+        indicators.append({
+            "name": "File is very small",
+            "detail": "Small files can hide useful proof, so the result should be treated carefully.",
+        })
+
+    forensic_metrics = {}
+
+    if file_bytes and is_image:
+        try:
+            forensic_metrics, image_indicators, image_delta = _analyze_image_pixels(file_bytes)
+            indicators.extend(image_indicators)
+            score += image_delta
+            width = forensic_metrics.get("width") or width
+            height = forensic_metrics.get("height") or height
+        except Exception:
+            score += 8
+            indicators.append({
+                "name": "Image forensic read failed",
+                "detail": "The file could not be fully decoded for pixel-level analysis.",
+            })
+
+    if width and height:
+        pixel_count = width * height
+        if pixel_count < 350_000:
+            score += 14
+            indicators.append({
+                "name": "Low picture quality",
+                "detail": "Low-resolution images are harder to verify, so the system becomes more cautious.",
+            })
+        elif pixel_count > 8_000_000:
+            score -= 4
+            indicators.append({
+                "name": "High picture quality",
+                "detail": "A larger image gives more details to inspect.",
+            })
+
+    generator_terms = [
+        "midjourney", "stable-diffusion", "stablediffusion", "dalle", "dall-e",
+        "sora", "runway", "pika", "leonardo", "ai-generated", "generated",
+    ]
+    matched_terms = [term for term in generator_terms if term in name]
+    if matched_terms:
+        score += 38
+        indicators.append({
+            "name": "AI word found in file name",
+            "detail": f"The file name contains: {', '.join(matched_terms[:3])}.",
+        })
+
+    if is_video and duration:
+        if duration < 3:
+            score += 8
+            indicators.append({
+                "name": "Very short clip",
+                "detail": "Short clips are common in synthetic samples and need frame-level review.",
+            })
+        elif duration > 60:
+            score -= 3
+
+    if is_video:
+        indicators.append({
+            "name": "Frame-level model recommended",
+            "detail": "Video upload is supported, but advanced deepfake detection requires sampling frames and running a trained video model.",
+        })
+
+    if is_image and any(ext in name for ext in (".webp", ".png")):
+        score += 10
+        indicators.append({
+            "name": "Image format needs caution",
+            "detail": "PNG or WebP images often come from editing tools, downloads, screenshots, or AI tools.",
+        })
+
+    if size_bytes > 5_000_000:
+        score -= 5
+        indicators.append({
+            "name": "Large file has more proof",
+            "detail": "A bigger file usually gives more details to check.",
+        })
+
+    likelihood = max(3, min(97, score))
+    confidence = "High" if width and height and size_bytes > 120_000 else "Medium"
+    if size_bytes < 50_000:
+        confidence = "Low"
+
+    if likelihood >= 60:
+        risk = "May be AI-made"
+        simple_result = "Do not trust it yet"
+    elif likelihood >= 35:
+        risk = "Not sure"
+        simple_result = "Check the source"
+    else:
+        risk = "Looks real"
+        simple_result = "Still verify once"
+
+    if not indicators:
+        indicators.append({
+            "name": "No big warning found",
+            "detail": "This scan did not find strong AI signs, but it cannot guarantee the image is real.",
+        })
+
+    return {
+        "filename": filename,
+        "media_type": "Video" if is_video else "Image" if is_image else "Unknown",
+        "ai_likelihood": likelihood,
+        "authenticity_score": 100 - likelihood,
+        "risk_level": risk,
+        "simple_result": simple_result,
+        "confidence": confidence,
+        "dimensions": {"width": width, "height": height},
+        "duration_seconds": duration,
+        "forensic_metrics": forensic_metrics,
+        "indicators": indicators,
+        "explanation": (
+            "This scan checks file details and image patterns. It is cautious when camera proof is missing."
+        ),
+        "recommended_action": (
+            "Do not forward or trust this media until you confirm where it came from."
+        ),
+    }
