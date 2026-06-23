@@ -23,25 +23,7 @@ SEED_REPORTS = [
         "risk": "High",
         "status": "Verified",
         "created_at": "2026-05-25T10:30:00Z",
-    },
-    {
-        "id": 2,
-        "type": "Job Scam",
-        "title": "Registration fee for remote job",
-        "location": "Bengaluru",
-        "risk": "Critical",
-        "status": "Investigating",
-        "created_at": "2026-05-26T08:10:00Z",
-    },
-    {
-        "id": 3,
-        "type": "Phishing URL",
-        "title": "Fake bank KYC page",
-        "location": "Mumbai",
-        "risk": "Critical",
-        "status": "Verified",
-        "created_at": "2026-05-26T16:40:00Z",
-    },
+    }
 ]
 
 
