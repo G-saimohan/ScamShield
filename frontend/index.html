@@ -10,34 +10,60 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="index.css">
 </head>
-<body>
-    <aside class="sidebar">
-        <div class="brand">
-            <span class="brand-mark">S</span>
-            <div>
-                <strong>ScamShield AI</strong>
-                <small>Threat Intelligence</small>
+<body class="auth-active">
+    <div class="auth-shell" id="authShell">
+        <div class="auth-card">
+            <div class="brand">
+                <span class="brand-mark">S</span>
+                <div>
+                    <strong>ScamShield AI</strong>
+                    <small>Secure scam intelligence</small>
+                </div>
             </div>
+            <h2>Welcome back</h2>
+            <p>Sign in to review suspicious messages, scan URLs, and defend your community.</p>
+            <form id="loginForm" class="auth-form">
+                <label for="loginEmail">Email</label>
+                <input id="loginEmail" type="email" value="demo@scamshield.com" required>
+                <label for="loginPassword">Password</label>
+                <input id="loginPassword" type="password" value="scamshield123" required>
+                <button class="primary-btn full" type="submit">Sign in</button>
+            </form>
+            <p class="auth-hint">Demo access: demo@scamshield.com / scamshield123</p>
         </div>
+    </div>
 
-        <nav class="nav">
-            <a href="#overview" class="active">Overview</a>
-            <a href="#analyzer">AI Analyzer</a>
-            <a href="#website">Website Check</a>
-            <a href="#media">Media Forensics</a>
-            <a href="#community">Community Hub</a>
-            <a href="#education">Education</a>
-            <a href="#admin">Admin Intel</a>
-        </nav>
+    <div class="app-wrapper" id="appWrapper">
+        <button class="mobile-toggle" id="mobileNavToggle" aria-label="Toggle navigation">☰</button>
+        <aside class="sidebar" id="sidebar">
+            <div class="brand">
+                <span class="brand-mark">S</span>
+                <div>
+                    <strong>ScamShield AI</strong>
+                    <small>Threat Intelligence</small>
+                </div>
+            </div>
 
-        <div class="sidebar-panel">
-            <span>Realtime Guard</span>
-            <strong>Active</strong>
-            <p>Monitoring scam language, suspicious links, and community reports.</p>
-        </div>
-    </aside>
+            <button class="logout-btn" id="logoutBtn">Logout</button>
 
-    <main class="app-shell">
+            <nav class="nav">
+                <a href="#overview" class="active">Overview</a>
+                <a href="#analyzer">AI Analyzer</a>
+                <a href="#website">Website Check</a>
+                <a href="#media">Media Forensics</a>
+                <a href="#community">Community Hub</a>
+                <a href="#education">Education</a>
+                <a href="#admin">Admin Intel</a>
+            </nav>
+
+            <div class="sidebar-panel">
+                <span>Realtime Guard</span>
+                <strong>Active</strong>
+                <p>Monitoring scam language, suspicious links, and community reports.</p>
+            </div>
+        </aside>
+
+        <main class="app-shell" id="appShell">
         <section class="app-page active" id="overview">
             <div class="page-header">
                 <div>

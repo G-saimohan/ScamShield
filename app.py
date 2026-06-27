@@ -2,7 +2,7 @@ from datetime import datetime
 import json
 import os
 import sqlite3
-from flask import Flask, jsonify, render_template, request
+from flask import Flask, jsonify, render_template, request, session
 from flask_cors import CORS
 
 from detector import analyze_content, analyze_media_file, analyze_url
@@ -10,6 +10,7 @@ from detector import analyze_content, analyze_media_file, analyze_url
 
 app = Flask(__name__, static_folder="frontend", template_folder="frontend", static_url_path="")
 CORS(app)
+app.secret_key = os.environ.get("SCAMSHIELD_SECRET_KEY", "scamshield-demo-secret")
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(BASE_DIR, "scamshield.db")
@@ -114,6 +115,35 @@ def list_reports(limit=8):
 
 
 init_db()
+
+
+def is_authenticated():
+    return bool(session.get("authenticated"))
+
+
+@app.route("/api/auth-status")
+def auth_status():
+    return jsonify({"authenticated": is_authenticated(), "user": session.get("user")})
+
+
+@app.route("/api/login", methods=["POST"])
+def login():
+    data = request.get_json(silent=True) or {}
+    email = (data.get("email") or "").strip().lower()
+    password = (data.get("password") or "").strip()
+
+    if email == "demo@scamshield.com" and password == "scamshield123":
+        session["authenticated"] = True
+        session["user"] = {"email": email, "name": "Demo Analyst"}
+        return jsonify({"success": True, "message": "Signed in successfully"})
+
+    return jsonify({"error": "Invalid credentials"}), 401
+
+
+@app.route("/api/logout", methods=["POST"])
+def logout():
+    session.clear()
+    return jsonify({"success": True})
 
 
 @app.route("/")

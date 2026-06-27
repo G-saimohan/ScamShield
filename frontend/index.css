@@ -29,6 +29,86 @@ body {
     overflow-x: hidden;
 }
 
+body.auth-active .auth-shell {
+    display: grid;
+}
+
+body:not(.auth-active) .auth-shell {
+    display: none;
+}
+
+body.auth-active .app-wrapper {
+    display: none;
+}
+
+body:not(.auth-active) .app-wrapper {
+    display: flex;
+}
+
+.auth-shell {
+    min-height: 100vh;
+    padding: 24px;
+    display: grid;
+    place-items: center;
+    background: radial-gradient(circle at top left, rgba(71, 163, 255, 0.24), transparent 24%), linear-gradient(135deg, #050a10, #0f1724 55%, #08111c);
+}
+
+.auth-card {
+    width: min(100%, 440px);
+    padding: 28px;
+    border-radius: 20px;
+    border: 1px solid var(--line);
+    background: rgba(8, 13, 20, 0.9);
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.32);
+}
+
+.auth-card h2 {
+    margin: 20px 0 8px;
+    font-size: 1.75rem;
+}
+
+.auth-card p {
+    margin: 0 0 16px;
+    color: var(--muted);
+    line-height: 1.6;
+}
+
+.auth-form {
+    display: grid;
+    gap: 10px;
+}
+
+.auth-form label {
+    font-size: 0.95rem;
+    color: #dce9f7;
+    font-weight: 600;
+}
+
+.auth-hint {
+    margin-top: 14px;
+    font-size: 0.92rem;
+    color: #7cc9ff;
+}
+
+.app-wrapper {
+    min-height: 100vh;
+}
+
+.mobile-toggle {
+    display: none;
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 30;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: rgba(8, 13, 20, 0.95);
+    color: var(--text);
+    width: 46px;
+    height: 46px;
+    cursor: pointer;
+}
+
 a {
     color: inherit;
     text-decoration: none;
@@ -42,17 +122,29 @@ select {
 }
 
 .sidebar {
-    position: fixed;
-    inset: 0 auto 0 0;
+    position: sticky;
+    top: 0;
     width: 280px;
+    min-height: 100vh;
     padding: 24px;
     background: rgba(8, 13, 20, 0.86);
     border-right: 1px solid var(--line);
     backdrop-filter: blur(18px);
     display: flex;
     flex-direction: column;
-    gap: 26px;
+    gap: 18px;
     z-index: 10;
+}
+
+.logout-btn {
+    width: 100%;
+    min-height: 42px;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text);
+    cursor: pointer;
+    font-weight: 700;
 }
 
 .brand {
@@ -130,7 +222,7 @@ select {
 }
 
 .app-shell {
-    margin-left: 280px;
+    flex: 1;
     padding: 28px;
 }
 
@@ -617,13 +709,23 @@ input[type="file"] {
 }
 
 @media (max-width: 1080px) {
-    .sidebar {
-        position: static;
-        width: auto;
-        flex-direction: row;
+    .mobile-toggle {
+        display: inline-flex;
         align-items: center;
-        flex-wrap: wrap;
-        overflow: hidden;
+        justify-content: center;
+    }
+
+    .sidebar {
+        position: fixed;
+        inset: 0 auto 0 0;
+        width: min(280px, 86vw);
+        transform: translateX(-110%);
+        transition: transform 0.2s ease;
+        overflow-y: auto;
+    }
+
+    .sidebar.is-open {
+        transform: translateX(0);
     }
 
     .sidebar-panel {
@@ -631,12 +733,16 @@ input[type="file"] {
     }
 
     .nav {
-        display: flex;
-        flex-wrap: wrap;
+        display: grid;
+    }
+
+    .app-wrapper {
+        display: block;
     }
 
     .app-shell {
         margin-left: 0;
+        padding-top: 70px;
     }
 
     .hero,

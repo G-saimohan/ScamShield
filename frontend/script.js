@@ -1,6 +1,7 @@
 let trendChart;
 let categoryChart;
 let activeContentType = "message";
+let isAuthenticated = false;
 
 const qs = (selector) => document.querySelector(selector);
 const routes = ["overview", "analyzer", "website", "media", "community", "education", "admin"];
@@ -24,7 +25,69 @@ async function postJSON(url, payload) {
     return data;
 }
 
+async function checkAuth() {
+    try {
+        const response = await fetch("/api/auth-status");
+        const data = await response.json();
+        isAuthenticated = Boolean(data.authenticated);
+        updateAuthView();
+        return isAuthenticated;
+    } catch (error) {
+        isAuthenticated = false;
+        updateAuthView();
+        return false;
+    }
+}
+
+function updateAuthView() {
+    document.body.classList.toggle("auth-active", !isAuthenticated);
+    qs("#appWrapper").style.display = isAuthenticated ? "flex" : "none";
+    qs("#authShell").style.display = isAuthenticated ? "none" : "grid";
+}
+
+async function submitLogin(event) {
+    event.preventDefault();
+    const button = qs("#loginForm button");
+    const email = qs("#loginEmail").value;
+    const password = qs("#loginPassword").value;
+
+    button.textContent = "Signing in...";
+    button.disabled = true;
+
+    try {
+        const response = await fetch("/api/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email, password }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.error || "Login failed");
+        }
+        isAuthenticated = true;
+        updateAuthView();
+        await loadDashboard();
+        showPage("overview");
+    } catch (error) {
+        alert(error.message);
+    } finally {
+        button.textContent = "Sign in";
+        button.disabled = false;
+    }
+}
+
+async function logout() {
+    try {
+        await fetch("/api/logout", { method: "POST" });
+    } catch (error) {
+        console.warn(error);
+    }
+    isAuthenticated = false;
+    updateAuthView();
+}
+
 async function loadDashboard() {
+    if (!isAuthenticated) return;
     const response = await fetch("/api/dashboard");
     const data = await response.json();
 
@@ -377,11 +440,18 @@ function wireRouting() {
             if (!target) return;
             event.preventDefault();
             showPage(target);
+            qs("#sidebar").classList.remove("is-open");
         });
     });
 
     window.addEventListener("hashchange", () => {
         showPage(window.location.hash.replace("#", ""));
+    });
+}
+
+function wireMobileNav() {
+    qs("#mobileNavToggle").addEventListener("click", () => {
+        qs("#sidebar").classList.toggle("is-open");
     });
 }
 
@@ -479,13 +549,20 @@ function wireFilePreviews() {
 
 document.addEventListener("DOMContentLoaded", async () => {
     wireRouting();
+    wireMobileNav();
     wireTabs();
     wireFilePreviews();
     updateUploadPanels();
+    qs("#loginForm").addEventListener("submit", submitLogin);
+    qs("#logoutBtn").addEventListener("click", logout);
     qs("#analyzeBtn").addEventListener("click", analyzeContent);
     qs("#urlBtn").addEventListener("click", checkUrl);
     qs("#reportBtn").addEventListener("click", submitReport);
     qs("#mediaBtn").addEventListener("click", analyzeMedia);
-    await loadDashboard();
-    showPage(window.location.hash.replace("#", "") || "overview");
+
+    const authenticated = await checkAuth();
+    if (authenticated) {
+        await loadDashboard();
+        showPage(window.location.hash.replace("#", "") || "overview");
+    }
 });
