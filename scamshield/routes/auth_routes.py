@@ -10,8 +10,9 @@ from scamshield.controllers.auth_controller import (
     logout,
     logout_user,
     register_user,
+    admin_check,
 )
-from scamshield.middleware.authentication import require_authentication
+from scamshield.middleware.authentication import login_required, require_role
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -22,11 +23,16 @@ auth_bp.add_url_rule("/api/auth/register", view_func=register_user, methods=["PO
 auth_bp.add_url_rule("/api/auth/login", view_func=login_user, methods=["POST"])
 auth_bp.add_url_rule(
     "/api/auth/me",
-    view_func=require_authentication(current_user),
+    view_func=login_required(current_user),
     methods=["GET"],
 )
 auth_bp.add_url_rule(
     "/api/auth/logout",
-    view_func=require_authentication(logout_user),
+    view_func=login_required(logout_user),
     methods=["POST"],
+)
+auth_bp.add_url_rule(
+    "/api/auth/admin-check",
+    view_func=require_role("admin")(admin_check),
+    methods=["GET"],
 )

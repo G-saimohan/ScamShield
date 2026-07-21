@@ -4,6 +4,11 @@ from uuid import uuid4
 
 from flask import current_app, session
 
+from scamshield.middleware.rate_limiting import (
+    check_login_rate_limit,
+    record_failed_login,
+    reset_login_attempts,
+)
 from scamshield.repositories.exceptions import DuplicateRecordError
 from scamshield.repositories.user_repository import UserRepository
 from scamshield.security.jwt_tokens import (
@@ -17,6 +22,10 @@ from scamshield.security.passwords import hash_password, verify_password
 
 class AuthenticationError(ValueError):
     """Raised when authentication fails."""
+
+
+class TooManyLoginAttemptsError(ValueError):
+    """Raised when login attempts exceed the configured limit."""
 
 
 class AuthService:
@@ -83,9 +92,14 @@ class AuthService:
     @classmethod
     def login_with_password(cls, payload: dict) -> dict:
         """Authenticate a user with email and password."""
+        try:
+            check_login_rate_limit(payload["email"])
+        except ValueError as error:
+            raise TooManyLoginAttemptsError(str(error)) from error
+
         user = UserRepository.find_by_email(payload["email"])
         if not user:
-            current_app.logger.warning("failed_login email=%s", payload["email"])
+            cls._record_failed_login(payload["email"])
             raise AuthenticationError("Invalid email or password")
 
         if not user.get("is_active", True):
@@ -93,12 +107,17 @@ class AuthService:
             raise AuthenticationError("User account is inactive")
 
         if not cls.verify_password(payload["password"], user.get("password_hash", "")):
-            current_app.logger.warning("failed_login email=%s", payload["email"])
+            cls._record_failed_login(payload["email"])
             raise AuthenticationError("Invalid email or password")
 
+        reset_login_attempts(payload["email"])
         user["last_login"] = UserRepository.update_last_login(user["user_id"])
         token = cls.generate_access_token(user)
-        current_app.logger.info("user_login_success user_id=%s", user["user_id"])
+        current_app.logger.info(
+            "user_login_success user_id=%s email=%s",
+            user["user_id"],
+            user["email"],
+        )
         return {
             "success": True,
             "message": "Login successful",
@@ -114,7 +133,7 @@ class AuthService:
     def get_current_user(cls, token: str) -> dict:
         """Return the active user represented by a token."""
         payload = cls.verify_token(token)
-        user = UserRepository.find_by_id(payload["user_id"])
+        user = UserRepository.find_by_id(payload["sub"])
         if not user:
             raise AuthenticationError("User not found")
         if not user.get("is_active", True):
@@ -164,11 +183,18 @@ class AuthService:
             "last_login": user.get("last_login"),
         }
 
+    @staticmethod
+    def _record_failed_login(email: str) -> None:
+        """Record and log a failed login attempt."""
+        record_failed_login(email)
+        current_app.logger.warning("failed_login email=%s", email)
+
 
 __all__ = [
     "AuthService",
     "AuthenticationError",
     "DuplicateRecordError",
     "ExpiredTokenError",
+    "TooManyLoginAttemptsError",
     "TokenError",
 ]

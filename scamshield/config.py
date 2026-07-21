@@ -50,6 +50,10 @@ class Config:
     )
     JWT_EXPIRATION_MINUTES = int(os.environ.get("JWT_EXPIRATION_MINUTES", "60"))
     BCRYPT_ROUNDS = int(os.environ.get("BCRYPT_ROUNDS", "12"))
+    LOGIN_MAX_FAILED_ATTEMPTS = int(os.environ.get("LOGIN_MAX_FAILED_ATTEMPTS", "5"))
+    LOGIN_RATE_LIMIT_WINDOW_MINUTES = int(
+        os.environ.get("LOGIN_RATE_LIMIT_WINDOW_MINUTES", "15")
+    )
     LEGACY_SQLITE_PATH = os.environ.get(
         "SCAMSHIELD_DATABASE_PATH",
         str(PROJECT_ROOT / "scamshield.db"),
