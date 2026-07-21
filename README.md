@@ -89,6 +89,19 @@ Open [http://127.0.0.1:5000](http://127.0.0.1:5000) in your browser.
 
 The application creates `scamshield.db` automatically on first launch and adds a small set of sample reports.
 
+### Configuration
+
+ScamShield reads runtime configuration from environment variables so it is ready for a future `.env` workflow:
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `SCAMSHIELD_SECRET_KEY` | `scamshield-demo-secret` | Flask session signing key |
+| `SCAMSHIELD_DATABASE_PATH` | `scamshield.db` in the project root | SQLite database path |
+| `SCAMSHIELD_CORS_ORIGINS` | `*` | Allowed CORS origins |
+| `SCAMSHIELD_DEMO_EMAIL` | `demo@scamshield.com` | Demo login email |
+| `SCAMSHIELD_DEMO_PASSWORD` | `scamshield123` | Demo login password |
+| `FLASK_DEBUG` | `false` | Enables Flask debug mode when set to `true` |
+
 ## Optional: Train the Phishing Model
 
 Create the model output directory and run the training script:
@@ -110,8 +123,13 @@ Generated `.pkl` files are ignored by Git.
 | Method | Endpoint | Description |
 | --- | --- | --- |
 | `GET` | `/` | Serve the ScamShield dashboard |
+| `GET` | `/api/health` | Return application health status |
+| `GET` | `/api/auth-status` | Return current session authentication state |
+| `POST` | `/api/login` | Sign in with demo analyst credentials |
+| `POST` | `/api/logout` | Clear the active session |
 | `POST` | `/api/analyze` | Analyze message or transcript content |
 | `POST` | `/api/check-url` | Inspect a URL for phishing indicators |
+| `POST` | `/check-url` | Backward-compatible URL inspection endpoint |
 | `POST` | `/api/analyze-file` | Analyze an uploaded file with optional transcript text |
 | `POST` | `/api/analyze-media` | Run lightweight image or video forensics |
 | `POST` | `/api/report` | Submit a community scam report |
@@ -125,15 +143,47 @@ curl -X POST http://127.0.0.1:5000/api/analyze \
   -d "{\"content_type\":\"message\",\"content\":\"Verify your KYC now and share your OTP.\"}"
 ```
 
+## Backend Architecture
+
+The backend now uses an application factory and layered package architecture while preserving the original frontend and API surface.
+
+- `routes/` defines Flask Blueprints and URL registration only.
+- `controllers/` receives HTTP requests, delegates work, and returns JSON or rendered templates.
+- `services/` contains URL analysis orchestration, file analysis, media analysis, dashboard composition, authentication, and report generation.
+- `repositories/` isolates SQLite access behind repository classes and protocols so a future MongoDB migration can replace persistence without rewriting controllers.
+- `validators/` validates and normalizes incoming request payloads and uploads.
+- `middleware/` contains request logging plus placeholders for authentication and rate limiting.
+- `ai/` contains the existing detection engine moved from the root-level `detector.py`.
+- `utils/` contains shared helpers for logging, time, and centralized error responses.
+- `extensions.py` owns Flask extension instances such as CORS.
+- `config.py` centralizes environment-driven configuration.
+
+Root-level `app.py` and `detector.py` remain as compatibility shims. Existing commands such as `python app.py`, `gunicorn app:app`, and imports from `detector` continue to work.
+
 ## Project Structure
 
 ```text
 ScamShield/
-|-- app.py                  # Flask application and API routes
-|-- detector.py             # Text, URL, and media risk analysis
+|-- app.py                  # Compatibility entry point for python app.py and gunicorn app:app
+|-- detector.py             # Backward-compatible detector imports
 |-- train_model.py          # Optional Random Forest training pipeline
 |-- requirements.txt        # Python dependencies
 |-- Procfile                # Gunicorn deployment command
+|-- scamshield/
+|   |-- __init__.py         # Application factory
+|   |-- app.py              # WSGI module for scamshield.app:app deployments
+|   |-- config.py           # Environment-driven configuration
+|   |-- extensions.py       # Flask extension instances
+|   |-- ai/                 # Detection engine
+|   |-- controllers/        # HTTP controllers
+|   |-- middleware/         # Request logging and future auth/rate limit hooks
+|   |-- models/             # Domain model dataclasses
+|   |-- repositories/       # Persistence interfaces and SQLite implementation
+|   |-- routes/             # Flask Blueprints
+|   |-- security/           # Security helpers
+|   |-- services/           # Business logic and orchestration
+|   |-- utils/              # Shared utilities
+|   `-- validators/         # Request validation
 |-- frontend/
 |   |-- index.html          # Dashboard interface
 |   |-- index.css           # Application styling
