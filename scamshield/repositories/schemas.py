@@ -47,9 +47,14 @@ def validate_scan(document: dict) -> dict:
 
 
 def validate_user(document: dict) -> dict:
-    """Validate a user document placeholder."""
+    """Validate a user document."""
     prepared = with_timestamps(document)
-    require_fields(prepared, ["user_id"])
+    prepared.setdefault("role", "user")
+    prepared.setdefault("is_active", True)
+    require_fields(
+        prepared,
+        ["user_id", "username", "email", "password_hash", "role"],
+    )
     return prepared
 
 

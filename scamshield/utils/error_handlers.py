@@ -19,7 +19,19 @@ def register_error_handlers(app: Flask) -> None:
     @app.errorhandler(ValidationError)
     def handle_validation_error(error: ValidationError):
         app.logger.warning("validation_error message=%s", str(error))
-        return jsonify({"success": False, "message": str(error), "error": str(error)}), 400
+        details = error.args[0] if error.args and isinstance(error.args[0], dict) else {}
+        message = "Validation failed" if details else str(error)
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "message": message,
+                    "error": message,
+                    "details": details,
+                }
+            ),
+            400,
+        )
 
     @app.errorhandler(RepositoryValidationError)
     def handle_repository_validation_error(error: RepositoryValidationError):

@@ -120,6 +120,9 @@ ScamShield reads runtime configuration from environment variables. Copy `.env.ex
 | `DEBUG` | `false` | Enables Flask debug mode when set to `true` |
 | `MONGODB_TIMEOUT_MS` | `5000` | MongoDB server selection timeout |
 | `MONGODB_STRICT` | `false` | When `true`, startup fails instead of using the development fallback |
+| `JWT_SECRET_KEY` | `SECRET_KEY` value | HS256 JWT signing key |
+| `JWT_EXPIRATION_MINUTES` | `60` | Access token lifetime |
+| `BCRYPT_ROUNDS` | `12` | bcrypt password hashing cost |
 | `SCAMSHIELD_DEMO_EMAIL` | `demo@scamshield.com` | Demo login email |
 | `SCAMSHIELD_DEMO_PASSWORD` | `scamshield123` | Demo login password |
 
@@ -193,6 +196,10 @@ Generated `.pkl` files are ignored by Git.
 | `GET` | `/api/auth-status` | Return current session authentication state |
 | `POST` | `/api/login` | Sign in with demo analyst credentials |
 | `POST` | `/api/logout` | Clear the active session |
+| `POST` | `/api/auth/register` | Register a user and return a JWT access token |
+| `POST` | `/api/auth/login` | Login with email/password and return a JWT access token |
+| `GET` | `/api/auth/me` | Return the current JWT-authenticated user |
+| `POST` | `/api/auth/logout` | Acknowledge client-side JWT logout |
 | `POST` | `/api/analyze` | Analyze message or transcript content |
 | `POST` | `/api/check-url` | Inspect a URL for phishing indicators |
 | `POST` | `/check-url` | Backward-compatible URL inspection endpoint |
@@ -208,6 +215,35 @@ curl -X POST http://127.0.0.1:5000/api/analyze \
   -H "Content-Type: application/json" \
   -d "{\"content_type\":\"message\",\"content\":\"Verify your KYC now and share your OTP.\"}"
 ```
+
+## Authentication
+
+ScamShield supports the first half of production authentication with bcrypt password hashing and HS256 JWT access tokens.
+
+Registration:
+
+```bash
+curl -X POST http://127.0.0.1:5000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d "{\"username\":\"analyst\",\"email\":\"analyst@example.com\",\"password\":\"StrongPass123\"}"
+```
+
+Login:
+
+```bash
+curl -X POST http://127.0.0.1:5000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"analyst@example.com\",\"password\":\"StrongPass123\"}"
+```
+
+Use the returned token for protected endpoints:
+
+```bash
+curl http://127.0.0.1:5000/api/auth/me \
+  -H "Authorization: Bearer ACCESS_TOKEN"
+```
+
+JWT payloads include `user_id`, `email`, `role`, issued-at time, and expiration. Password hashes are never returned by the API. The legacy demo session endpoints remain available for the existing frontend flow.
 
 ## Backend Architecture
 

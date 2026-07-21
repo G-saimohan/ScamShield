@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.4.0 - 2026-07-21
+
+### Added
+
+- bcrypt password hashing for registered users.
+- HS256 JWT access-token generation and verification.
+- Authentication service methods for registration, login, token verification, current-user loading, password hashing, and password verification.
+- Auth validators for registration and login requests.
+- Auth middleware for Bearer token validation and current-user injection.
+- JWT auth endpoints: `/api/auth/register`, `/api/auth/login`, `/api/auth/me`, and `/api/auth/logout`.
+- Config values for `JWT_SECRET_KEY`, `JWT_EXPIRATION_MINUTES`, and `BCRYPT_ROUNDS`.
+- Security helpers for password hashing and JWT token handling.
+
+### Changed
+
+- `/api/dashboard` now requires either a valid JWT or the existing legacy demo session.
+- User repository now supports email, username, and user-id lookups plus last-login updates.
+- User schema validation now requires username, email, password hash, role, and active status defaults.
+
+### Fixed
+
+- Validation errors now preserve structured field-level details.
+- Existing legacy `/api/login` and `/api/logout` behavior remains compatible with the current frontend.
+
+### Removed
+
+- Nothing.
+
 ## 0.3.1 - 2026-07-21
 
 ### Added

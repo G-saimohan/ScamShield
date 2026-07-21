@@ -44,6 +44,12 @@ class Config:
         "true",
         "yes",
     }
+    JWT_SECRET_KEY = os.environ.get(
+        "JWT_SECRET_KEY",
+        os.environ.get("SECRET_KEY", "scamshield-development-jwt-secret"),
+    )
+    JWT_EXPIRATION_MINUTES = int(os.environ.get("JWT_EXPIRATION_MINUTES", "60"))
+    BCRYPT_ROUNDS = int(os.environ.get("BCRYPT_ROUNDS", "12"))
     LEGACY_SQLITE_PATH = os.environ.get(
         "SCAMSHIELD_DATABASE_PATH",
         str(PROJECT_ROOT / "scamshield.db"),

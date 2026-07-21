@@ -2,7 +2,7 @@
 
 ## Current Project Version
 
-0.3.1
+0.4.0
 
 ## Completed Milestones
 
@@ -10,6 +10,7 @@
 - Persistence layer migrated from SQLite repositories to MongoDB repository classes.
 - Existing API paths and frontend behavior preserved.
 - Local MongoDB Atlas development configuration completed.
+- First-half production authentication completed.
 
 ## Completed Features
 
@@ -24,10 +25,21 @@
 - Development in-memory fallback when `MONGODB_URI` is not configured.
 - Automatic `.env` loading during Flask startup.
 - Startup logging for MongoDB connection attempts, ping results, active database name, and backend mode.
+- bcrypt password hashing.
+- JWT access-token generation and validation.
+- Authenticated current-user endpoint.
+- Protected dashboard access with legacy session compatibility.
+- Structured auth validation responses.
 
 ## Pending Features
 
 - Live MongoDB Atlas verification after `<PASSWORD>` is replaced with the real password.
+- Refresh tokens.
+- Password reset.
+- Email verification.
+- OAuth and social login.
+- Multi-factor authentication.
+- Full RBAC beyond basic `user` and `admin` role fields.
 - JWT authentication.
 - Production rate limiting implementation.
 - Full automated test suite.
@@ -35,6 +47,7 @@
 ## Known Issues
 
 - `.env` intentionally contains `<PASSWORD>` as a placeholder, so Atlas authentication cannot succeed until it is replaced.
+- JWT logout is stateless and only tells the client to discard the token.
 
 ## Manual Setup Required
 
@@ -51,10 +64,16 @@
 - `MONGODB_STRICT`
 - `SCAMSHIELD_DEMO_EMAIL`
 - `SCAMSHIELD_DEMO_PASSWORD`
+- `JWT_SECRET_KEY`
+- `JWT_EXPIRATION_MINUTES`
+- `BCRYPT_ROUNDS`
 
 ## Files Created
 
 - `.env`
+- `scamshield/security/passwords.py`
+- `scamshield/security/jwt_tokens.py`
+- `scamshield/validators/auth_validator.py`
 
 ## Files Modified
 
@@ -65,6 +84,14 @@
 - `requirements.txt`
 - `scamshield/__init__.py`
 - `scamshield/config.py`
+- `scamshield/controllers/auth_controller.py`
+- `scamshield/middleware/authentication.py`
+- `scamshield/repositories/schemas.py`
+- `scamshield/repositories/user_repository.py`
+- `scamshield/routes/auth_routes.py`
+- `scamshield/routes/dashboard_routes.py`
+- `scamshield/services/auth_service.py`
+- `scamshield/utils/error_handlers.py`
 
 ## Tests Performed
 
@@ -73,6 +100,7 @@
 - Repository smoke inserts for users, threat intelligence, notifications, feedback, and audit logs.
 - `.env` load verification for `MONGODB_URI`, `DATABASE_NAME`, `DEBUG`, `CORS_ORIGINS`, and `MONGODB_STRICT`.
 - Startup log verification for MongoDB connection attempt, ping/failure diagnostics, active database, and backend mode.
+- Authentication smoke test for registration, duplicate registration, login, password hash storage, JWT generation, `/api/auth/me`, protected dashboard, invalid JWT, expired JWT, legacy session dashboard access, and an existing public API.
 
 ## Verification Results
 
@@ -85,7 +113,14 @@
 - MongoDB connection code executes on startup.
 - Placeholder Atlas credentials correctly fall back to the development backend while logging the failure.
 - Live MongoDB Atlas connection is pending replacement of `<PASSWORD>`.
+- Registration returns a JWT access token.
+- Login returns a JWT access token.
+- Stored password value is a bcrypt hash and does not contain plaintext.
+- Protected dashboard rejects anonymous requests.
+- Protected dashboard and `/api/auth/me` accept valid JWTs.
+- Invalid and expired JWTs return 401.
+- Existing legacy frontend session flow remains compatible.
 
 ## Next Recommended Milestone
 
-Replace `<PASSWORD>`, restart the Flask app, confirm `mongodb_ping_succeeded` appears in logs, then run the migration utility if legacy local data should be imported.
+Replace `<PASSWORD>`, restart the Flask app, confirm MongoDB startup succeeds, then build Milestone 3B features: refresh tokens, password reset, email verification, and richer authorization.
