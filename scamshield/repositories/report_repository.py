@@ -1,12 +1,21 @@
-"""Report repository abstraction."""
+"""Report repository backed by MongoDB."""
 
 from typing import Protocol
+from uuid import uuid4
 
-from scamshield.repositories.database import get_db, rows_to_dicts
+from flask import current_app
+
+from scamshield.repositories.base_repository import (
+    handle_repository_error,
+    public_document,
+)
+from scamshield.repositories.database import COLLECTIONS, get_collection
+from scamshield.repositories.history_repository import HistoryRepository
+from scamshield.repositories.schemas import validate_report
 
 
 class ReportRepositoryInterface(Protocol):
-    """Protocol for future report persistence implementations."""
+    """Protocol for report persistence implementations."""
 
     @staticmethod
     def create_report(report: dict) -> dict:
@@ -18,61 +27,77 @@ class ReportRepositoryInterface(Protocol):
 
 
 class ReportRepository:
-    """SQLite-backed community report repository."""
+    """MongoDB-backed community report repository."""
+
+    collection_name = COLLECTIONS["reports"]
 
     @staticmethod
     def create_report(report: dict) -> dict:
-        """Persist a community report and return it with its generated id."""
-        with get_db() as db:
-            cursor = db.execute(
-                """
-                INSERT INTO reports (type, title, location, risk, status, created_at)
-                VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    report["type"],
-                    report["title"],
-                    report["location"],
-                    report["risk"],
-                    report["status"],
-                    report["created_at"],
-                ),
+        """Persist a community report and return it for the API response."""
+        document = validate_report(
+            {
+                **report,
+                "report_id": report.get("report_id") or f"report-{uuid4()}",
+            }
+        )
+        try:
+            get_collection(ReportRepository.collection_name).insert_one(document)
+            current_app.logger.info(
+                "report_inserted report_id=%s", document["report_id"]
             )
-            created = dict(report)
-            created["id"] = cursor.lastrowid
-        return created
+            return ReportRepository._to_response(document)
+        except Exception as error:
+            current_app.logger.exception("report_insert_failed")
+            handle_repository_error(error)
 
     @staticmethod
     def list_reports(limit: int = 8) -> list[dict]:
         """Return recent community reports."""
-        with get_db() as db:
-            rows = db.execute(
-                """
-                SELECT id, type, title, location, risk, status, created_at
-                FROM reports
-                ORDER BY id DESC
-                LIMIT ?
-                """,
-                (limit,),
-            ).fetchall()
-        return rows_to_dicts(rows)
+        try:
+            cursor = (
+                get_collection(ReportRepository.collection_name)
+                .find({}, {"_id": 0})
+                .sort("created_at", -1)
+                .limit(limit)
+            )
+            return [
+                ReportRepository._to_response(public_document(item))
+                for item in cursor
+            ]
+        except Exception as error:
+            current_app.logger.exception("report_list_failed")
+            handle_repository_error(error)
 
     @staticmethod
     def dashboard_counts() -> dict:
         """Return aggregate counts used by the dashboard."""
-        with get_db() as db:
-            report_count = db.execute("SELECT COUNT(*) FROM reports").fetchone()[0]
-            scan_count = db.execute("SELECT COUNT(*) FROM history").fetchone()[0]
-            critical_reports = db.execute(
-                "SELECT COUNT(*) FROM reports WHERE risk = 'Critical'"
-            ).fetchone()[0]
-            verified_reports = db.execute(
-                "SELECT COUNT(*) FROM reports WHERE status = 'Verified'"
-            ).fetchone()[0]
+        try:
+            collection = get_collection(ReportRepository.collection_name)
+            report_count = collection.count_documents({})
+            critical_reports = collection.count_documents({"risk": "Critical"})
+            verified_reports = collection.count_documents({"status": "Verified"})
+            scan_count = HistoryRepository.count_scans()
+            return {
+                "report_count": report_count,
+                "scan_count": scan_count,
+                "critical_reports": critical_reports,
+                "verified_reports": verified_reports,
+            }
+        except Exception as error:
+            current_app.logger.exception("dashboard_count_failed")
+            handle_repository_error(error)
 
+    @staticmethod
+    def _to_response(document: dict) -> dict:
+        """Map a report document to the existing API response shape."""
+        item = public_document(document)
+        item["id"] = item.get("report_id")
         return {
-            "report_count": report_count,
-            "scan_count": scan_count,
-            "critical_reports": critical_reports,
-            "verified_reports": verified_reports,
+            "id": item["id"],
+            "type": item["type"],
+            "title": item["title"],
+            "location": item["location"],
+            "risk": item["risk"],
+            "status": item["status"],
+            "created_at": item["created_at"],
         }

@@ -12,7 +12,7 @@ An all-in-one scam awareness and threat-intelligence dashboard for analyzing sus
 
 ScamShield AI helps users inspect potentially fraudulent content from one dashboard. It identifies common social-engineering patterns, examines suspicious URL structures, performs lightweight media-forensics checks, stores scan history, and lets users submit community scam reports.
 
-The project is designed as an educational security tool with a Flask API, a responsive browser interface, SQLite storage, and an optional Random Forest phishing-model training pipeline.
+The project is designed as an educational security tool with a Flask API, a responsive browser interface, MongoDB Atlas persistence, and an optional Random Forest phishing-model training pipeline.
 
 ## Features
 
@@ -21,7 +21,7 @@ The project is designed as an educational security tool with a Flask API, a resp
 - **Media forensics** - reviews image metadata and simple pixel-level signals, while recording file size, dimensions, and video duration.
 - **Community reporting** - accepts scam reports and assigns an initial risk level.
 - **Threat dashboard** - displays scan metrics, trends, scam categories, recent reports, and analysis history.
-- **Local persistence** - stores reports and scan history in SQLite.
+- **MongoDB persistence** - stores reports, scan history, users, threat intelligence, notifications, feedback, and audit logs through repository classes.
 - **REST API** - exposes endpoints for integration with other applications.
 - **Optional ML training** - includes a Random Forest training script using the bundled phishing-websites dataset.
 
@@ -43,7 +43,7 @@ The running application uses explainable, rule-based risk scoring:
 
 - **Backend:** Python, Flask, Flask-CORS
 - **Frontend:** HTML, CSS, JavaScript, Chart.js
-- **Database:** SQLite
+- **Database:** MongoDB Atlas with PyMongo
 - **Media analysis:** Pillow
 - **Machine learning:** pandas, NumPy, SciPy, scikit-learn, joblib
 - **Deployment:** Gunicorn and Render-compatible `Procfile`
@@ -54,6 +54,7 @@ The running application uses explainable, rule-based risk scoring:
 
 - Python 3.10 or newer
 - Git
+- MongoDB Atlas cluster and connection string for persistent storage
 
 ### Installation
 
@@ -87,20 +88,68 @@ python app.py
 
 Open [http://127.0.0.1:5000](http://127.0.0.1:5000) in your browser.
 
-The application creates `scamshield.db` automatically on first launch and adds a small set of sample reports.
+The application connects to MongoDB Atlas when `MONGODB_URI` is configured and adds a small set of sample reports when the reports collection is empty. If no MongoDB URI is provided, the app uses an in-memory development fallback so local frontend/API work can still run.
 
 ### Configuration
 
-ScamShield reads runtime configuration from environment variables so it is ready for a future `.env` workflow:
+ScamShield reads runtime configuration from environment variables. Copy `.env.example` to `.env` when you add a dotenv loader or configure these values directly in your shell/deployment platform.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `SCAMSHIELD_SECRET_KEY` | `scamshield-demo-secret` | Flask session signing key |
-| `SCAMSHIELD_DATABASE_PATH` | `scamshield.db` in the project root | SQLite database path |
-| `SCAMSHIELD_CORS_ORIGINS` | `*` | Allowed CORS origins |
+| `MONGODB_URI` | empty | MongoDB Atlas connection string |
+| `DATABASE_NAME` | `scamshield` | MongoDB database name |
+| `SECRET_KEY` | `scamshield-demo-secret` | Flask session signing key |
+| `CORS_ORIGINS` | `*` | Allowed CORS origins, comma-separated for multiple origins |
+| `DEBUG` | `false` | Enables Flask debug mode when set to `true` |
+| `MONGODB_TIMEOUT_MS` | `5000` | MongoDB server selection timeout |
+| `MONGODB_STRICT` | `false` | When `true`, startup fails instead of using the development fallback |
 | `SCAMSHIELD_DEMO_EMAIL` | `demo@scamshield.com` | Demo login email |
 | `SCAMSHIELD_DEMO_PASSWORD` | `scamshield123` | Demo login password |
-| `FLASK_DEBUG` | `false` | Enables Flask debug mode when set to `true` |
+
+Legacy `SCAMSHIELD_SECRET_KEY`, `SCAMSHIELD_CORS_ORIGINS`, and `FLASK_DEBUG` values are still supported for backward compatibility.
+
+### MongoDB Collections
+
+ScamShield prepares these collections through the repository layer:
+
+- `users`
+- `scans`
+- `reports`
+- `threat_intelligence`
+- `notifications`
+- `feedback`
+- `audit_logs`
+
+### MongoDB Indexes
+
+The app creates indexes for:
+
+- `users.email`
+- `users.username`
+- `scans.scan_id`
+- `scans.url`
+- `scans.created_at`
+- `reports.report_id`
+- `reports.created_at`
+- `threat_intelligence.url`
+- `threat_intelligence.created_at`
+- `notifications.created_at`
+- `feedback.created_at`
+- `audit_logs.created_at`
+
+### Migrate Legacy SQLite Data
+
+If a previous `scamshield.db` file exists, configure `MONGODB_URI` and run:
+
+```bash
+python scripts/migrate_sqlite_to_mongodb.py
+```
+
+You can also pass a custom SQLite path:
+
+```bash
+python scripts/migrate_sqlite_to_mongodb.py path/to/scamshield.db
+```
 
 ## Optional: Train the Phishing Model
 
@@ -150,7 +199,7 @@ The backend now uses an application factory and layered package architecture whi
 - `routes/` defines Flask Blueprints and URL registration only.
 - `controllers/` receives HTTP requests, delegates work, and returns JSON or rendered templates.
 - `services/` contains URL analysis orchestration, file analysis, media analysis, dashboard composition, authentication, and report generation.
-- `repositories/` isolates SQLite access behind repository classes and protocols so a future MongoDB migration can replace persistence without rewriting controllers.
+- `repositories/` isolates MongoDB access behind repository classes and protocols so controllers and services never access the database directly.
 - `validators/` validates and normalizes incoming request payloads and uploads.
 - `middleware/` contains request logging plus placeholders for authentication and rate limiting.
 - `ai/` contains the existing detection engine moved from the root-level `detector.py`.
@@ -178,7 +227,7 @@ ScamShield/
 |   |-- controllers/        # HTTP controllers
 |   |-- middleware/         # Request logging and future auth/rate limit hooks
 |   |-- models/             # Domain model dataclasses
-|   |-- repositories/       # Persistence interfaces and SQLite implementation
+|   |-- repositories/       # MongoDB repositories, schemas, indexes, and migration-safe helpers
 |   |-- routes/             # Flask Blueprints
 |   |-- security/           # Security helpers
 |   |-- services/           # Business logic and orchestration
@@ -200,7 +249,7 @@ The included `Procfile` starts the application with:
 web: gunicorn app:app
 ```
 
-For production, configure persistent storage if you want SQLite reports and scan history to survive redeployments.
+For production, set `MONGODB_URI`, `DATABASE_NAME`, `SECRET_KEY`, `CORS_ORIGINS`, and `DEBUG=false` in your deployment environment.
 
 ## Contributing
 

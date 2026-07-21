@@ -3,6 +3,13 @@
 from flask import Flask, jsonify
 from werkzeug.exceptions import HTTPException
 
+from scamshield.repositories.exceptions import (
+    DatabaseConnectionError,
+    DatabaseTimeoutError,
+    DuplicateRecordError,
+    RepositoryError,
+    RepositoryValidationError,
+)
 from scamshield.validators.exceptions import ValidationError
 
 
@@ -13,6 +20,67 @@ def register_error_handlers(app: Flask) -> None:
     def handle_validation_error(error: ValidationError):
         app.logger.warning("validation_error message=%s", str(error))
         return jsonify({"success": False, "message": str(error), "error": str(error)}), 400
+
+    @app.errorhandler(RepositoryValidationError)
+    def handle_repository_validation_error(error: RepositoryValidationError):
+        app.logger.warning("repository_validation_error message=%s", str(error))
+        return jsonify({"success": False, "message": str(error), "error": str(error)}), 400
+
+    @app.errorhandler(DuplicateRecordError)
+    def handle_duplicate_record_error(error: DuplicateRecordError):
+        app.logger.warning("duplicate_record_error message=%s", str(error))
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "message": "A record with the same unique value already exists",
+                    "error": str(error),
+                }
+            ),
+            409,
+        )
+
+    @app.errorhandler(DatabaseTimeoutError)
+    def handle_database_timeout_error(error: DatabaseTimeoutError):
+        app.logger.error("database_timeout_error message=%s", str(error))
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "message": "Database operation timed out",
+                    "error": str(error),
+                }
+            ),
+            504,
+        )
+
+    @app.errorhandler(DatabaseConnectionError)
+    def handle_database_connection_error(error: DatabaseConnectionError):
+        app.logger.error("database_connection_error message=%s", str(error))
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "message": "Database connection failed",
+                    "error": str(error),
+                }
+            ),
+            503,
+        )
+
+    @app.errorhandler(RepositoryError)
+    def handle_repository_error(error: RepositoryError):
+        app.logger.error("repository_error message=%s", str(error))
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "message": "Database operation failed",
+                    "error": str(error),
+                }
+            ),
+            500,
+        )
 
     @app.errorhandler(HTTPException)
     def handle_http_error(error: HTTPException):
