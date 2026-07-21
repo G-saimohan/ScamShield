@@ -1,8 +1,13 @@
 """Scan orchestration service."""
 
+from time import perf_counter
+from uuid import uuid4
+
+from flask import current_app
 from werkzeug.datastructures import FileStorage
 
 from scamshield.ai.detector import analyze_content, analyze_media_file, analyze_url
+from scamshield.detection.engine import ScanEngine
 from scamshield.repositories.history_repository import HistoryRepository
 
 
@@ -21,6 +26,33 @@ class ScanService:
             result,
         )
         return result
+
+    @staticmethod
+    def scan_url(url: str, user_id: str | None = None) -> dict:
+        """Analyze a URL with the modular scan engine and persist the result."""
+        started_at = perf_counter()
+        result = ScanEngine().analyze_url(url)
+        scan_id = f"scan-{uuid4()}"
+        HistoryRepository.create_url_scan(
+            {
+                "scan_id": scan_id,
+                "user_id": user_id,
+                "url": result["url"],
+                "risk_score": result["risk_score"],
+                "classification": result["classification"],
+                "reasons": result["reasons"],
+                "confidence": result["confidence"],
+            }
+        )
+        duration_ms = (perf_counter() - started_at) * 1000
+        current_app.logger.info(
+            "url_scan_completed scan_id=%s user_id=%s risk_score=%s duration_ms=%.2f",
+            scan_id,
+            user_id,
+            result["risk_score"],
+            duration_ms,
+        )
+        return {"scan_id": scan_id, **result}
 
     @staticmethod
     def analyze_content(content: str, content_type: str) -> dict:

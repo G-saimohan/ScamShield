@@ -76,6 +76,31 @@ class HistoryRepository:
             handle_repository_error(error)
 
     @staticmethod
+    def create_url_scan(scan: dict) -> dict:
+        """Persist a normalized URL scan result."""
+        scan = {
+            **scan,
+            "kind": "URL",
+            "input": scan["url"],
+            "risk": scan["classification"],
+            "score": scan["risk_score"],
+        }
+        document = validate_scan(scan)
+        try:
+            get_collection(HistoryRepository.collection_name).insert_one(document)
+            current_app.logger.info(
+                "url_scan_inserted scan_id=%s risk_score=%s",
+                document["scan_id"],
+                document["risk_score"],
+            )
+            return public_document(document)
+        except Exception as error:
+            current_app.logger.exception(
+                "url_scan_insert_failed scan_id=%s", document.get("scan_id")
+            )
+            handle_repository_error(error)
+
+    @staticmethod
     def list_history(limit: int = 8) -> list[dict]:
         """Return recent scan history documents in the frontend shape."""
         try:

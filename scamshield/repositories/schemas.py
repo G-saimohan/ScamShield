@@ -38,10 +38,17 @@ def validate_report(document: dict) -> dict:
 def validate_scan(document: dict) -> dict:
     """Validate a scan document."""
     prepared = with_timestamps(document)
-    require_fields(
-        prepared,
-        ["scan_id", "kind", "input", "risk", "score", "created_at"],
-    )
+    if "url" in prepared and "classification" in prepared:
+        require_fields(
+            prepared,
+            ["scan_id", "url", "risk_score", "classification", "created_at"],
+        )
+        prepared["risk_score"] = int(prepared["risk_score"])
+        prepared.setdefault("reasons", [])
+        prepared.setdefault("confidence", 0)
+        return prepared
+
+    require_fields(prepared, ["scan_id", "kind", "input", "risk", "score", "created_at"])
     prepared["score"] = int(prepared["score"])
     return prepared
 
