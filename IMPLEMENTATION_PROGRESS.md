@@ -2,13 +2,14 @@
 
 ## Current Project Version
 
-0.3.0
+0.3.1
 
 ## Completed Milestones
 
 - Modular Flask backend architecture preserved.
 - Persistence layer migrated from SQLite repositories to MongoDB repository classes.
 - Existing API paths and frontend behavior preserved.
+- Local MongoDB Atlas development configuration completed.
 
 ## Completed Features
 
@@ -21,27 +22,23 @@
 - Centralized JSON database error handling.
 - Structured logging for database connection, inserts, updates, deletes, and failures.
 - Development in-memory fallback when `MONGODB_URI` is not configured.
+- Automatic `.env` loading during Flask startup.
+- Startup logging for MongoDB connection attempts, ping results, active database name, and backend mode.
 
 ## Pending Features
 
-- Live MongoDB Atlas verification after real credentials are provided.
+- Live MongoDB Atlas verification after `<PASSWORD>` is replaced with the real password.
 - JWT authentication.
 - Production rate limiting implementation.
 - Full automated test suite.
 
 ## Known Issues
 
-- The current environment does not provide `MONGODB_URI`, so verification used the in-memory development fallback.
-- `pymongo` must be installed from `requirements.txt` before using MongoDB Atlas.
+- `.env` intentionally contains `<PASSWORD>` as a placeholder, so Atlas authentication cannot succeed until it is replaced.
 
 ## Manual Setup Required
 
-- Create a MongoDB Atlas cluster.
-- Add the current server IP address to Atlas network access.
-- Create a database user with read/write permissions.
-- Set `MONGODB_URI`, `DATABASE_NAME`, `SECRET_KEY`, `CORS_ORIGINS`, and `DEBUG`.
-- Run `pip install -r requirements.txt`.
-- Run `python scripts/migrate_sqlite_to_mongodb.py` if importing old local data.
+- Replace `<PASSWORD>` in `.env` with the real MongoDB Atlas database user password.
 
 ## Environment Variables
 
@@ -57,35 +54,25 @@
 
 ## Files Created
 
-- `.env.example`
-- `CHANGELOG.md`
-- `IMPLEMENTATION_PROGRESS.md`
-- `scripts/migrate_sqlite_to_mongodb.py`
-- `scamshield/repositories/audit_log_repository.py`
-- `scamshield/repositories/base_repository.py`
-- `scamshield/repositories/exceptions.py`
-- `scamshield/repositories/feedback_repository.py`
-- `scamshield/repositories/generic_repository.py`
-- `scamshield/repositories/notification_repository.py`
-- `scamshield/repositories/schemas.py`
-- `scamshield/repositories/threat_intelligence_repository.py`
-- `scamshield/repositories/user_repository.py`
+- `.env`
 
 ## Files Modified
 
 - `README.md`
+- `CHANGELOG.md`
+- `IMPLEMENTATION_PROGRESS.md`
+- `.env.example`
 - `requirements.txt`
+- `scamshield/__init__.py`
 - `scamshield/config.py`
-- `scamshield/repositories/database.py`
-- `scamshield/repositories/history_repository.py`
-- `scamshield/repositories/report_repository.py`
-- `scamshield/utils/error_handlers.py`
 
 ## Tests Performed
 
 - Python compile check for `app.py`, `detector.py`, `scamshield`, and `scripts`.
 - API smoke test for `/`, `/api/health`, `/api/auth-status`, `/api/login`, `/api/logout`, `/api/dashboard`, `/api/check-url`, `/check-url`, `/api/analyze`, and `/api/report`.
 - Repository smoke inserts for users, threat intelligence, notifications, feedback, and audit logs.
+- `.env` load verification for `MONGODB_URI`, `DATABASE_NAME`, `DEBUG`, `CORS_ORIGINS`, and `MONGODB_STRICT`.
+- Startup log verification for MongoDB connection attempt, ping/failure diagnostics, active database, and backend mode.
 
 ## Verification Results
 
@@ -94,8 +81,11 @@
 - Existing APIs return expected success statuses.
 - Frontend root route returns HTTP 200.
 - Repository layer works through the development fallback.
-- Live MongoDB Atlas connection is pending real `MONGODB_URI` configuration.
+- `.env` is loaded automatically.
+- MongoDB connection code executes on startup.
+- Placeholder Atlas credentials correctly fall back to the development backend while logging the failure.
+- Live MongoDB Atlas connection is pending replacement of `<PASSWORD>`.
 
 ## Next Recommended Milestone
 
-Configure MongoDB Atlas credentials in the deployment environment, run the migration utility, and add automated repository/API tests against a dedicated test database.
+Replace `<PASSWORD>`, restart the Flask app, confirm `mongodb_ping_succeeded` appears in logs, then run the migration utility if legacy local data should be imported.

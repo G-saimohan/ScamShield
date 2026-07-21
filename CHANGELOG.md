@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.3.1 - 2026-07-21
+
+### Added
+
+- Automatic `.env` loading during Flask configuration startup.
+- `python-dotenv` dependency for standard local environment loading.
+- Local placeholder `.env` for MongoDB Atlas development.
+- More detailed startup logs for MongoDB connection attempts, ping results, active database name, and fallback mode.
+
+### Changed
+
+- Updated `.env.example` with the requested local MongoDB Atlas development values.
+- README now documents local Atlas setup and the single required credential replacement step.
+
+### Fixed
+
+- Configuration can still load `.env` values through a small fallback parser before dependencies are installed.
+
+### Removed
+
+- Nothing.
+
 ## 0.3.0 - 2026-07-21
 
 ### Added

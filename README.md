@@ -80,6 +80,23 @@ Install the dependencies:
 pip install -r requirements.txt
 ```
 
+### Local MongoDB Atlas Setup
+
+The project now auto-loads `.env` during Flask startup. A local `.env` file is included with placeholder Atlas values copied from `.env.example`.
+
+Before running locally, replace only `<PASSWORD>` in `.env` with your real MongoDB Atlas database user password:
+
+```text
+MONGODB_URI=mongodb+srv://USERNAME:<PASSWORD>@cluster0.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
+DATABASE_NAME=scamshield
+SECRET_KEY=CHANGE_ME_TO_A_RANDOM_SECRET
+DEBUG=True
+CORS_ORIGINS=http://localhost:3000,http://127.0.0.1:3000
+MONGODB_STRICT=False
+```
+
+On startup, ScamShield logs whether it is attempting MongoDB Atlas, whether `ping` succeeds, the active database name, and whether MongoDB or the development fallback is active.
+
 ### Run the Application
 
 ```bash
