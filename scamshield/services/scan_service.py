@@ -7,6 +7,7 @@ from flask import current_app
 from werkzeug.datastructures import FileStorage
 
 from scamshield.ai.detector import analyze_content, analyze_media_file, analyze_url
+from scamshield.analysis.explanation_service import ExplanationService
 from scamshield.detection.engine import ScanEngine
 from scamshield.repositories.history_repository import HistoryRepository
 from scamshield.services.threat_intelligence_service import ThreatIntelligenceService
@@ -40,6 +41,7 @@ class ScanService:
             result,
             existing_threat,
         )
+        explanation = ExplanationService().explain(result, threat_summary)
         scan_id = f"scan-{uuid4()}"
         HistoryRepository.create_url_scan(
             {
@@ -51,6 +53,7 @@ class ScanService:
                 "reasons": result["reasons"],
                 "confidence": result["confidence"],
                 "threat_intelligence": threat_summary,
+                "threat_summary": explanation,
             }
         )
         duration_ms = (perf_counter() - started_at) * 1000
@@ -61,7 +64,12 @@ class ScanService:
             result["risk_score"],
             duration_ms,
         )
-        return {"scan_id": scan_id, **result, "threat_intelligence": threat_summary}
+        return {
+            "scan_id": scan_id,
+            **result,
+            "threat_intelligence": threat_summary,
+            "threat_summary": explanation,
+        }
 
     @staticmethod
     def analyze_content(content: str, content_type: str) -> dict:
