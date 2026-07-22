@@ -2,6 +2,8 @@ let trendChart;
 let categoryChart;
 let activeContentType = "message";
 let isAuthenticated = false;
+let authToken = localStorage.getItem("scamshield_access_token") || "";
+let authMode = "login";
 
 const qs = (selector) => document.querySelector(selector);
 const routes = ["overview", "analyzer", "website", "media", "community", "education", "admin"];
@@ -14,7 +16,7 @@ function riskClass(risk) {
 async function postJSON(url, payload) {
     const response = await fetch(url, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: authHeaders({ "Content-Type": "application/json" }),
         body: JSON.stringify(payload),
     });
 
@@ -25,15 +27,46 @@ async function postJSON(url, payload) {
     return data;
 }
 
+function authHeaders(headers = {}) {
+    return authToken
+        ? { ...headers, Authorization: `Bearer ${authToken}` }
+        : headers;
+}
+
+function storeAuth(data) {
+    authToken = data?.data?.access_token || "";
+    if (authToken) {
+        localStorage.setItem("scamshield_access_token", authToken);
+    }
+    isAuthenticated = Boolean(authToken);
+}
+
+function clearAuth() {
+    authToken = "";
+    localStorage.removeItem("scamshield_access_token");
+    isAuthenticated = false;
+}
+
 async function checkAuth() {
+    if (!authToken) {
+        clearAuth();
+        updateAuthView();
+        return false;
+    }
+
     try {
-        const response = await fetch("/api/auth-status");
+        const response = await fetch("/api/auth/me", {
+            headers: authHeaders(),
+        });
         const data = await response.json();
-        isAuthenticated = Boolean(data.authenticated);
+        if (!response.ok) {
+            throw new Error(data.error || "Authentication expired");
+        }
+        isAuthenticated = true;
         updateAuthView();
         return isAuthenticated;
     } catch (error) {
-        isAuthenticated = false;
+        clearAuth();
         updateAuthView();
         return false;
     }
@@ -43,6 +76,24 @@ function updateAuthView() {
     document.body.classList.toggle("auth-active", !isAuthenticated);
     qs("#appWrapper").style.display = isAuthenticated ? "flex" : "none";
     qs("#authShell").style.display = isAuthenticated ? "none" : "grid";
+}
+
+function updateAuthMode() {
+    const isLogin = authMode === "login";
+    qs("#loginForm").classList.toggle("hidden", !isLogin);
+    qs("#registerForm").classList.toggle("hidden", isLogin);
+    qs("#authTitle").textContent = isLogin ? "Welcome back" : "Create account";
+    qs("#authSubtitle").textContent = isLogin
+        ? "Sign in to review suspicious messages, scan URLs, and defend your community."
+        : "Create a ScamShield account to access protected intelligence tools.";
+    qs("#authModeToggle").textContent = isLogin
+        ? "Create an account"
+        : "Already have an account? Sign in";
+}
+
+function toggleAuthMode() {
+    authMode = authMode === "login" ? "register" : "login";
+    updateAuthMode();
 }
 
 async function submitLogin(event) {
@@ -55,7 +106,7 @@ async function submitLogin(event) {
     button.disabled = true;
 
     try {
-        const response = await fetch("/api/login", {
+        const response = await fetch("/api/auth/login", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ email, password }),
@@ -64,7 +115,7 @@ async function submitLogin(event) {
         if (!response.ok) {
             throw new Error(data.error || "Login failed");
         }
-        isAuthenticated = true;
+        storeAuth(data);
         updateAuthView();
         await loadDashboard();
         showPage("overview");
@@ -76,20 +127,64 @@ async function submitLogin(event) {
     }
 }
 
+async function submitRegistration(event) {
+    event.preventDefault();
+    const button = qs("#registerForm button");
+    const username = qs("#registerUsername").value;
+    const email = qs("#registerEmail").value;
+    const password = qs("#registerPassword").value;
+
+    button.textContent = "Creating...";
+    button.disabled = true;
+
+    try {
+        const response = await fetch("/api/auth/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username, email, password }),
+        });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.error || data.message || "Registration failed");
+        }
+        storeAuth(data);
+        updateAuthView();
+        await loadDashboard();
+        showPage("overview");
+    } catch (error) {
+        alert(error.message);
+    } finally {
+        button.textContent = "Create account";
+        button.disabled = false;
+    }
+}
+
 async function logout() {
     try {
-        await fetch("/api/logout", { method: "POST" });
+        if (authToken) {
+            await fetch("/api/auth/logout", {
+                method: "POST",
+                headers: authHeaders(),
+            });
+        }
     } catch (error) {
         console.warn(error);
     }
-    isAuthenticated = false;
+    clearAuth();
     updateAuthView();
 }
 
 async function loadDashboard() {
     if (!isAuthenticated) return;
-    const response = await fetch("/api/dashboard");
+    const response = await fetch("/api/dashboard", {
+        headers: authHeaders(),
+    });
     const data = await response.json();
+    if (!response.ok) {
+        clearAuth();
+        updateAuthView();
+        throw new Error(data.error || "Dashboard request failed");
+    }
 
     qs("#metricScans").textContent = data.metrics.scans_today.toLocaleString();
     qs("#metricCritical").textContent = data.metrics.critical_threats;
@@ -302,6 +397,7 @@ async function analyzeContent() {
 
             const response = await fetch("/api/analyze-file", {
                 method: "POST",
+                headers: authHeaders(),
                 body: formData,
             });
             data = await response.json();
@@ -387,6 +483,7 @@ async function analyzeMedia() {
 
         const response = await fetch("/api/analyze-media", {
             method: "POST",
+            headers: authHeaders(),
             body: formData,
         });
         const data = await response.json();
@@ -553,7 +650,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     wireTabs();
     wireFilePreviews();
     updateUploadPanels();
+    updateAuthMode();
     qs("#loginForm").addEventListener("submit", submitLogin);
+    qs("#registerForm").addEventListener("submit", submitRegistration);
+    qs("#authModeToggle").addEventListener("click", toggleAuthMode);
     qs("#logoutBtn").addEventListener("click", logout);
     qs("#analyzeBtn").addEventListener("click", analyzeContent);
     qs("#urlBtn").addEventListener("click", checkUrl);

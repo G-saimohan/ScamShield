@@ -20,8 +20,8 @@
                     <small>Secure scam intelligence</small>
                 </div>
             </div>
-            <h2>Welcome back</h2>
-            <p>Sign in to review suspicious messages, scan URLs, and defend your community.</p>
+            <h2 id="authTitle">Welcome back</h2>
+            <p id="authSubtitle">Sign in to review suspicious messages, scan URLs, and defend your community.</p>
             <form id="loginForm" class="auth-form">
                 <label for="loginEmail">Email</label>
                 <input id="loginEmail" type="email"  required>
@@ -29,7 +29,18 @@
                 <input id="loginPassword" type="password"  required>
                 <button class="primary-btn full" type="submit">Sign in</button>
             </form>
-            <p class="auth-hint"></p>
+            <form id="registerForm" class="auth-form hidden">
+                <label for="registerUsername">Username</label>
+                <input id="registerUsername" type="text" required>
+                <label for="registerEmail">Email</label>
+                <input id="registerEmail" type="email" required>
+                <label for="registerPassword">Password</label>
+                <input id="registerPassword" type="password" minlength="8" required>
+                <button class="primary-btn full" type="submit">Create account</button>
+            </form>
+            <p class="auth-hint">
+                <button class="text-link" id="authModeToggle" type="button">Create an account</button>
+            </p>
         </div>
     </div>
 

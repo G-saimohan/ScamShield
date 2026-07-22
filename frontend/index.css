@@ -90,6 +90,19 @@ body:not(.auth-active) .app-wrapper {
     color: #7cc9ff;
 }
 
+.text-link {
+    border: 0;
+    background: transparent;
+    color: #7cc9ff;
+    cursor: pointer;
+    font: inherit;
+    padding: 0;
+}
+
+.text-link:hover {
+    color: #dce9f7;
+}
+
 .app-wrapper {
     min-height: 100vh;
 }
