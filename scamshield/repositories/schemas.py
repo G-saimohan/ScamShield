@@ -66,9 +66,29 @@ def validate_user(document: dict) -> dict:
 
 
 def validate_threat_intelligence(document: dict) -> dict:
-    """Validate a threat intelligence document placeholder."""
+    """Validate a threat intelligence document."""
     prepared = with_timestamps(document)
-    require_fields(prepared, ["threat_id", "title", "risk"])
+    require_fields(
+        prepared,
+        [
+            "threat_id",
+            "domain",
+            "first_seen",
+            "last_seen",
+            "scan_count",
+            "average_risk",
+            "highest_risk",
+            "classification",
+            "confidence",
+            "reputation",
+            "reasons",
+        ],
+    )
+    prepared["scan_count"] = int(prepared["scan_count"])
+    prepared["average_risk"] = float(prepared["average_risk"])
+    prepared["highest_risk"] = int(prepared["highest_risk"])
+    prepared["confidence"] = int(prepared["confidence"])
+    prepared["reasons"] = list(prepared["reasons"])
     return prepared
 
 

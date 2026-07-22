@@ -235,9 +235,14 @@ def create_indexes(database) -> None:
         [("report_id", ASCENDING)], unique=True
     )
     database[COLLECTIONS["reports"]].create_index([("created_at", ASCENDING)])
-    database[COLLECTIONS["threat_intelligence"]].create_index([("url", ASCENDING)])
+    database[COLLECTIONS["threat_intelligence"]].create_index(
+        [("domain", ASCENDING)], unique=True, sparse=True
+    )
     database[COLLECTIONS["threat_intelligence"]].create_index(
         [("created_at", ASCENDING)]
+    )
+    database[COLLECTIONS["threat_intelligence"]].create_index(
+        [("highest_risk", ASCENDING)]
     )
     database[COLLECTIONS["notifications"]].create_index([("created_at", ASCENDING)])
     database[COLLECTIONS["feedback"]].create_index([("created_at", ASCENDING)])

@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: scamshield
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: MONGODB_URI
+        sync: false
+      - key: DATABASE_NAME
+        value: scamshield
+      - key: SECRET_KEY
+        sync: false
+      - key: JWT_SECRET_KEY
+        sync: false
+      - key: DEBUG
+        value: "False"
+      - key: CORS_ORIGINS
+        value: "*"
+      - key: MONGODB_STRICT
+        value: "False"
+      - key: MONGODB_TIMEOUT_MS
+        value: "5000"
+      - key: JWT_EXPIRATION_MINUTES
+        value: "60"
+      - key: BCRYPT_ROUNDS
+        value: "12"
+      - key: LOGIN_MAX_FAILED_ATTEMPTS
+        value: "5"
+      - key: LOGIN_RATE_LIMIT_WINDOW_MINUTES
+        value: "15"

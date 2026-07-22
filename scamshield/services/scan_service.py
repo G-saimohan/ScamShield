@@ -9,6 +9,7 @@ from werkzeug.datastructures import FileStorage
 from scamshield.ai.detector import analyze_content, analyze_media_file, analyze_url
 from scamshield.detection.engine import ScanEngine
 from scamshield.repositories.history_repository import HistoryRepository
+from scamshield.services.threat_intelligence_service import ThreatIntelligenceService
 
 
 class ScanService:
@@ -31,7 +32,14 @@ class ScanService:
     def scan_url(url: str, user_id: str | None = None) -> dict:
         """Analyze a URL with the modular scan engine and persist the result."""
         started_at = perf_counter()
+        domain = ThreatIntelligenceService.extract_domain(url)
+        existing_threat = ThreatIntelligenceService.get_domain(domain)
         result = ScanEngine().analyze_url(url)
+        threat_summary = ThreatIntelligenceService.record_url_scan(
+            domain,
+            result,
+            existing_threat,
+        )
         scan_id = f"scan-{uuid4()}"
         HistoryRepository.create_url_scan(
             {
@@ -42,6 +50,7 @@ class ScanService:
                 "classification": result["classification"],
                 "reasons": result["reasons"],
                 "confidence": result["confidence"],
+                "threat_intelligence": threat_summary,
             }
         )
         duration_ms = (perf_counter() - started_at) * 1000
@@ -52,7 +61,7 @@ class ScanService:
             result["risk_score"],
             duration_ms,
         )
-        return {"scan_id": scan_id, **result}
+        return {"scan_id": scan_id, **result, "threat_intelligence": threat_summary}
 
     @staticmethod
     def analyze_content(content: str, content_type: str) -> dict:
