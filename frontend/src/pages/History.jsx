@@ -1,13 +1,14 @@
 import PageContainer from "../layouts/PageContainer.jsx";
+import EmptyState from "../components/EmptyState.jsx";
 
 export default function History() {
   return (
-    <PageContainer title="History" subtitle="Scan history will be expanded in a future milestone.">
-      <div className="placeholder-panel">
-        <i className="bi bi-clock-history" />
-        <h2>History foundation ready</h2>
-        <p>The route is protected and ready for repository-backed history views later.</p>
-      </div>
+    <PageContainer title="History" subtitle="Historical scan logs for this analyst session.">
+      <EmptyState
+        icon="bi-clock-history"
+        title="History Log Ready"
+        description="Historical persistence features are reserved for future threat lifecycle management phases."
+      />
     </PageContainer>
   );
 }
