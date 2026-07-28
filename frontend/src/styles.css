@@ -319,3 +319,62 @@ a {
 .tracking-tight {
   letter-spacing: -0.02em !important;
 }
+
+/* ── Dashboard enhancements ───────────────────────────────────── */
+
+/* Sidebar active link left-edge indicator */
+.sidebar .nav-link.active {
+  position: relative;
+}
+.sidebar .nav-link.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 25%;
+  height: 50%;
+  width: 3px;
+  border-radius: 0 4px 4px 0;
+  background: #22d3ee;
+}
+
+/* Scrollable sidebar nav area */
+.sidebar nav {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.15) transparent;
+}
+
+/* Backdrop blur utility */
+.backdrop-blur {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Card glow border on hover (summary cards) */
+.card.hover-shadow:hover {
+  border-color: rgba(34, 211, 238, 0.35) !important;
+  box-shadow:
+    0 0 20px rgba(34, 211, 238, 0.08),
+    0 8px 30px rgba(0, 0, 0, 0.25) !important;
+}
+
+/* Notification badge pulse */
+@keyframes notificationPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.5); }
+  50% { box-shadow: 0 0 0 4px rgba(220, 53, 69, 0); }
+}
+
+.notification-dot {
+  animation: notificationPulse 2s ease-in-out infinite;
+}
+
+/* Profile dropdown hover state */
+.dropdown-item-hover:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #f8fafc !important;
+}
+
+/* Monospace for URLs */
+.fw-mono {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}

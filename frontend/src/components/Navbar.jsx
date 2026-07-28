@@ -64,7 +64,7 @@ export default function Navbar({ onToggleSidebar }) {
       <div className="d-flex align-items-center gap-3">
         <div className="position-relative cursor-pointer text-muted hover-text-light px-2">
           <i className="bi bi-bell fs-5" />
-          <span className="position-absolute top-0 start-50 translate-middle-y badge rounded-circle bg-danger p-1" style={{ width: "6px", height: "6px" }} />
+          <span className="position-absolute top-0 start-50 translate-middle-y badge rounded-circle bg-danger p-1 notification-dot" style={{ width: "6px", height: "6px" }} />
         </div>
 
         <div className="position-relative" ref={dropdownRef}>
@@ -86,10 +86,10 @@ export default function Navbar({ onToggleSidebar }) {
                 <span className="badge bg-secondary-subtle text-secondary-emphasis mt-1.5 fs-8 text-uppercase tracking-wider px-2">{user?.role || "User"}</span>
               </div>
               <div className="py-2 d-flex flex-column gap-1 border-bottom border-secondary border-opacity-15">
-                <Link to="/profile" className="d-flex align-items-center gap-2 text-muted text-decoration-none py-1 hover-text-light small" onClick={() => setDropdownOpen(false)}>
+                <Link to="/profile" className="d-flex align-items-center gap-2 text-muted text-decoration-none py-2 px-2 rounded-2 dropdown-item-hover small" onClick={() => setDropdownOpen(false)}>
                   <i className="bi bi-person" /> Profile Account
                 </Link>
-                <Link to="/settings" className="d-flex align-items-center gap-2 text-muted text-decoration-none py-1 hover-text-light small" onClick={() => setDropdownOpen(false)}>
+                <Link to="/settings" className="d-flex align-items-center gap-2 text-muted text-decoration-none py-2 px-2 rounded-2 dropdown-item-hover small" onClick={() => setDropdownOpen(false)}>
                   <i className="bi bi-gear" /> Preferences & Settings
                 </Link>
               </div>
