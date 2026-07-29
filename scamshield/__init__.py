@@ -17,9 +17,9 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     """Create and configure the Flask application."""
     app = Flask(
         __name__,
-        static_folder="../frontend",
-        template_folder="../frontend",
-        static_url_path="",
+        static_folder="../frontend/dist/assets",
+        template_folder="../frontend/dist",
+        static_url_path="/assets",
     )
     app.config.from_object(config_class)
 

@@ -1,10 +1,12 @@
 """HTTP controllers for health and frontend rendering."""
 
-from flask import jsonify, render_template
+from flask import abort, jsonify, render_template
 
 
-def index():
+def index(path: str = ""):
     """Render the ScamShield dashboard."""
+    if path.startswith("api/") or path.startswith("src/") or "." in path:
+        abort(404)
     return render_template("index.html")
 
 
