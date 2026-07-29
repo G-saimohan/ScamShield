@@ -15,13 +15,14 @@ from scamshield.utils.logging import configure_logging
 
 def create_app(config_class: type[Config] = Config) -> Flask:
     """Create and configure the Flask application."""
+    frontend_dist = config_class.PROJECT_ROOT / "frontend" / "dist"
     app = Flask(
         __name__,
-        static_folder="../frontend/dist/assets",
-        template_folder="../frontend/dist",
+        static_folder=str(frontend_dist / "assets"),
         static_url_path="/assets",
     )
     app.config.from_object(config_class)
+    app.config["FRONTEND_DIST_DIR"] = str(frontend_dist)
 
     configure_logging(app)
     app.logger.info(
