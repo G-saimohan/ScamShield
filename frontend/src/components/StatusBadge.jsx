@@ -9,6 +9,21 @@ const VARIANT_MAP = {
     icon: "bi-exclamation-triangle-fill",
     label: "Suspicious",
   },
+  low: {
+    className: "bg-info-subtle text-info-emphasis border-info-subtle",
+    icon: "bi-info-circle-fill",
+    label: "Low",
+  },
+  medium: {
+    className: "bg-warning-subtle text-warning-emphasis border-warning-subtle",
+    icon: "bi-exclamation-triangle-fill",
+    label: "Medium",
+  },
+  high: {
+    className: "bg-danger-subtle text-danger-emphasis border-danger-subtle",
+    icon: "bi-shield-exclamation",
+    label: "High",
+  },
   malicious: {
     className: "bg-danger-subtle text-danger-emphasis border-danger-subtle",
     icon: "bi-shield-exclamation",

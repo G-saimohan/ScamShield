@@ -17,6 +17,26 @@ class ScanService:
     """Coordinate URL, content, file, and media analysis workflows."""
 
     @staticmethod
+    def get_scan_history(
+        page: int = 1,
+        per_page: int = 10,
+        search: str = "",
+        classification: str = "",
+    ) -> dict:
+        """Return paginated scan history."""
+        return HistoryRepository.list_history_page(
+            page=page,
+            per_page=per_page,
+            search=search,
+            classification=classification,
+        )
+
+    @staticmethod
+    def delete_scan(scan_id: str) -> bool:
+        """Delete a scan history entry."""
+        return HistoryRepository.delete_scan(scan_id)
+
+    @staticmethod
     def check_url(url: str) -> dict:
         """Analyze a URL and persist scan history."""
         result = analyze_url(url)

@@ -24,6 +24,33 @@ def scan_url():
     return jsonify(ScanService.scan_url(payload["url"], user.get("user_id")))
 
 
+def scan_history():
+    """Return paginated scan history."""
+    result = ScanService.get_scan_history(
+        page=request.args.get("page", 1, type=int),
+        per_page=request.args.get("per_page", 10, type=int),
+        search=request.args.get("search", ""),
+        classification=request.args.get("classification", ""),
+    )
+    return jsonify({"success": True, "data": result})
+
+
+def delete_scan(scan_id: str):
+    """Delete a scan history entry."""
+    if not ScanService.delete_scan(scan_id):
+        return (
+            jsonify(
+                {
+                    "success": False,
+                    "error": "Not Found",
+                    "message": "Scan history entry was not found",
+                }
+            ),
+            404,
+        )
+    return jsonify({"success": True, "message": "Scan history entry deleted"})
+
+
 def analyze_scam():
     """Analyze submitted text content."""
     payload = validate_content_payload(request.get_json(silent=True) or {})

@@ -7,6 +7,29 @@ export function scanUrl(url) {
   });
 }
 
+export function getScanHistory({ page = 1, perPage = 10, search = "", classification = "" } = {}) {
+  const params = new URLSearchParams({
+    page: String(page),
+    per_page: String(perPage),
+  });
+
+  if (search.trim()) {
+    params.set("search", search.trim());
+  }
+
+  if (classification) {
+    params.set("classification", classification);
+  }
+
+  return apiRequest(`/api/scans/history?${params.toString()}`);
+}
+
+export function deleteScan(scanId) {
+  return apiRequest(`/api/scans/${encodeURIComponent(scanId)}`, {
+    method: "DELETE",
+  });
+}
+
 export function analyzeContent(content, contentType = "text") {
   return apiRequest("/api/analyze", {
     method: "POST",

@@ -7,6 +7,8 @@ from scamshield.controllers.scan_controller import (
     analyze_media,
     analyze_scam,
     check_url,
+    delete_scan,
+    scan_history,
     scan_url,
 )
 from scamshield.middleware.authentication import login_required
@@ -22,4 +24,14 @@ scan_bp.add_url_rule(
     "/api/scan/url",
     view_func=login_required(scan_url),
     methods=["POST"],
+)
+scan_bp.add_url_rule(
+    "/api/scans/history",
+    view_func=login_required(scan_history),
+    methods=["GET"],
+)
+scan_bp.add_url_rule(
+    "/api/scans/<scan_id>",
+    view_func=login_required(delete_scan),
+    methods=["DELETE"],
 )

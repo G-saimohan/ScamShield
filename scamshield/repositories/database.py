@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+import re
 from typing import Any
 from uuid import uuid4
 
@@ -64,6 +65,10 @@ class InMemoryCursor:
         self._documents = self._documents[:count]
         return self
 
+    def skip(self, count: int) -> "InMemoryCursor":
+        self._documents = self._documents[count:]
+        return self
+
     def __iter__(self):
         return iter(self._documents)
 
@@ -117,8 +122,17 @@ class InMemoryCollection:
         for index, document in enumerate(self._documents):
             if _matches_filter(document, filter_query):
                 self._documents.pop(index)
+                deleted_count = 1
                 break
-        return None
+        else:
+            deleted_count = 0
+
+        class Result:
+            pass
+
+        result = Result()
+        result.deleted_count = deleted_count
+        return result
 
 
 class InMemoryDatabase:
@@ -137,7 +151,26 @@ class InMemoryDatabase:
 
 
 def _matches_filter(document: dict, filter_query: dict) -> bool:
-    return all(document.get(key) == value for key, value in filter_query.items())
+    for key, value in filter_query.items():
+        if key == "$or":
+            if not any(_matches_filter(document, option) for option in value):
+                return False
+            continue
+        if key == "$and":
+            if not all(_matches_filter(document, option) for option in value):
+                return False
+            continue
+
+        if isinstance(value, dict):
+            if "$regex" in value:
+                flags = re.IGNORECASE if "i" in value.get("$options", "") else 0
+                if not re.search(str(value["$regex"]), str(document.get(key, "")), flags):
+                    return False
+                continue
+
+        if document.get(key) != value:
+            return False
+    return True
 
 
 def _apply_projection(document: dict, projection: dict) -> dict:
