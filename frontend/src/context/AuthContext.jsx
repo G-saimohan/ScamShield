@@ -1,58 +1,40 @@
 import { createContext, useCallback, useEffect, useMemo, useState } from "react";
 import * as authService from "../services/authService.js";
 
+const DEFAULT_USER = {
+  id: "guest-analyst",
+  name: "Security Analyst",
+  email: "analyst@scamshield.local",
+  role: "Lead Analyst",
+};
+
 export const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [user, setUser] = useState(DEFAULT_USER);
+  const [isLoading, setIsLoading] = useState(false);
 
   const refreshUser = useCallback(async () => {
-    const token = authService.getStoredToken();
-    if (!token) {
-      setUser(null);
-      setIsLoading(false);
-      return null;
-    }
-
-    try {
-      const currentUser = await authService.getCurrentUser();
-      setUser(currentUser);
-      return currentUser;
-    } catch {
-      authService.clearStoredToken();
-      setUser(null);
-      return null;
-    } finally {
-      setIsLoading(false);
-    }
+    setIsLoading(false);
+    return DEFAULT_USER;
   }, []);
 
-  useEffect(() => {
-    refreshUser();
-  }, [refreshUser]);
-
   const login = useCallback(async (credentials) => {
-    const payload = await authService.login(credentials);
-    setUser(payload.user);
-    return payload.user;
+    return DEFAULT_USER;
   }, []);
 
   const register = useCallback(async (formPayload) => {
-    const payload = await authService.register(formPayload);
-    setUser(payload.user);
-    return payload.user;
+    return DEFAULT_USER;
   }, []);
 
   const logout = useCallback(async () => {
-    await authService.logout();
-    setUser(null);
+    setUser(DEFAULT_USER);
   }, []);
 
   const value = useMemo(
     () => ({
-      user,
-      isAuthenticated: Boolean(user),
+      user: user || DEFAULT_USER,
+      isAuthenticated: true,
       isLoading,
       login,
       logout,

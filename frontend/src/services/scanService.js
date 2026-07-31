@@ -1,9 +1,10 @@
 import { apiRequest } from "./apiClient.js";
 
 export function scanUrl(url) {
-  return apiRequest("/api/scan/url", {
+  return apiRequest("/api/check-url", {
     method: "POST",
     body: { url },
+    auth: false,
   });
 }
 

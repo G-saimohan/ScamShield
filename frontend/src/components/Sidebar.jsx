@@ -75,14 +75,15 @@ export default function Sidebar({ isOpen, onClose }) {
         </nav>
 
         <div className="p-3 border-top border-secondary border-opacity-15">
-          <button
-            onClick={handleLogout}
-            className="btn btn-outline-danger w-100 rounded-3 d-flex align-items-center justify-content-center gap-2 py-2"
-            type="button"
-          >
-            <i className="bi bi-box-arrow-right fs-5" />
-            <span>Logout</span>
-          </button>
+          <div className="d-flex align-items-center justify-content-between p-2.5 rounded-3 bg-dark bg-opacity-60 border border-info border-opacity-20">
+            <div className="d-flex align-items-center gap-2">
+              <span className="spinner-grow spinner-grow-sm text-info" role="status" aria-hidden="true" />
+              <small className="text-light fw-bold fs-8 text-uppercase tracking-wider">Engine Active</small>
+            </div>
+            <span className="badge bg-info bg-opacity-20 text-info border border-info border-opacity-30 rounded-pill px-2 py-0.5 fs-9">
+              v2.5 AI
+            </span>
+          </div>
         </div>
       </aside>
     </>
