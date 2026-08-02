@@ -1,5 +1,6 @@
 """Application factory for ScamShield."""
 
+import os
 from urllib.parse import urlparse
 
 from flask import Flask
@@ -50,6 +51,22 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     register_error_handlers(app)
     register_request_logging(app)
     register_api_rate_limiting(app)
+    # Production-time frontend build check: log a CRITICAL warning if missing
+    try:
+        if not app.config.get("DEBUG", False):
+            dist_dir = app.config.get("FRONTEND_DIST_DIR")
+            index_exists = os.path.exists(os.path.join(dist_dir, "index.html"))
+            assets_exists = os.path.isdir(os.path.join(dist_dir, "assets"))
+            if not (index_exists and assets_exists):
+                app.logger.critical(
+                    "frontend_build_missing frontend_dist=%s index_exists=%s assets_exists=%s",
+                    dist_dir,
+                    index_exists,
+                    assets_exists,
+                )
+    except Exception:
+        # Fail safe: do not prevent app startup for unexpected errors while checking filesystem
+        app.logger.exception("frontend_build_check_failed")
 
     app.logger.info("ScamShield application startup complete")
     return app
