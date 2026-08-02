@@ -38,4 +38,12 @@ def index(path: str = ""):
 
 def health_check():
     """Return application health status."""
-    return jsonify({"success": True, "status": "healthy", "service": "scamshield"})
+    db_backend = current_app.config.get("DATABASE_BACKEND", "unknown")
+    db_reason = current_app.config.get("DATABASE_BACKEND_REASON")
+    database_status = db_reason or db_backend
+    return jsonify({
+        "success": True,
+        "status": "healthy",
+        "service": "scamshield",
+        "database": database_status,
+    })

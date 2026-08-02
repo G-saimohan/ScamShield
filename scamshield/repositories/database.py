@@ -225,6 +225,12 @@ def get_database():
         return _mongo_db
     except ServerSelectionTimeoutError as error:
         current_app.logger.exception("mongodb_timeout")
+        # Surface a readable reason so health endpoint can indicate the memory fallback
+        try:
+            current_app.config["DATABASE_BACKEND_REASON"] = "memory-fallback"
+        except Exception:
+            # ignore if app context changes
+            pass
         if not current_app.config["MONGODB_STRICT"]:
             return _use_memory_fallback("mongodb_timeout using in-memory database")
         raise DatabaseConnectionError("MongoDB connection timed out") from error
