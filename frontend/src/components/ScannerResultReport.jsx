@@ -1,0 +1,114 @@
+import RiskMeter from "./RiskMeter.jsx";
+import StatusBadge from "./StatusBadge.jsx";
+import ThreatIntelCard from "./ThreatIntelCard.jsx";
+
+export default function ScannerResultReport({ result }) {
+  if (!result) return null;
+
+  const reasons = result.reasons || [];
+  const recommendations = result.recommendations || [];
+
+  return (
+    <section className="scanner-result animate-fade-in">
+      <div className="scanner-result-header">
+        <div>
+          <span className="scanner-eyebrow">Analysis complete</span>
+          <h2>{result.input || "Submitted content"}</h2>
+        </div>
+        <div className="d-flex flex-wrap align-items-center gap-2">
+          <StatusBadge status={normalizeStatus(result.classification)} />
+          <span className="confidence-pill">
+            <i className="bi bi-activity" />
+            {formatConfidence(result.confidence)} Confidence
+          </span>
+        </div>
+      </div>
+
+      <div className="row g-4">
+        <div className="col-12 col-lg-4">
+          <div className="scanner-result-card h-100">
+            <RiskMeter score={result.risk_score || 0} classification={result.classification || "Unknown"} />
+          </div>
+        </div>
+
+        <div className="col-12 col-lg-8">
+          <div className="scanner-result-card h-100">
+            <div className="result-section">
+              <span className="scanner-eyebrow">AI Threat Summary</span>
+              <p>{result.summary || "No AI summary was returned for this scan."}</p>
+            </div>
+
+            <div className="result-grid">
+              <ResultList
+                title="Reasons"
+                icon="bi-list-check"
+                items={reasons}
+                emptyText="No specific threat indicators were returned."
+              />
+              <ResultList
+                title="Recommendations"
+                icon="bi-shield-check"
+                items={recommendations}
+                emptyText="No recommendation was returned."
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {result.threat_intelligence ? (
+        <div className="mt-4">
+          <ThreatIntelCard threatIntel={result.threat_intelligence} domainName={result.domain} />
+        </div>
+      ) : (
+        <div className="scanner-result-card mt-4">
+          <div className="result-section mb-0">
+            <span className="scanner-eyebrow">Threat Intelligence Summary</span>
+            <p>No threat intelligence summary was returned for this scan.</p>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function ResultList({ title, icon, items, emptyText }) {
+  return (
+    <div className="result-list">
+      <h3>
+        <i className={`bi ${icon}`} />
+        {title}
+      </h3>
+      {items.length > 0 ? (
+        <ul>
+          {items.map((item, index) => (
+            <li key={`${title}-${index}`}>{item}</li>
+          ))}
+        </ul>
+      ) : (
+        <p>{emptyText}</p>
+      )}
+    </div>
+  );
+}
+
+function normalizeStatus(value = "") {
+  const normalized = String(value).toLowerCase();
+  if (normalized.includes("malicious") || normalized.includes("high") || normalized.includes("phishing")) {
+    return "malicious";
+  }
+  if (normalized.includes("suspicious") || normalized.includes("medium")) {
+    return "suspicious";
+  }
+  if (normalized.includes("safe") || normalized.includes("low")) {
+    return "safe";
+  }
+  return "unknown";
+}
+
+function formatConfidence(value) {
+  if (value === undefined || value === null || value === "") {
+    return "N/A";
+  }
+  return `${value}%`;
+}

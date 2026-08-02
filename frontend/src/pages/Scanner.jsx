@@ -1,454 +1,357 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import PageContainer from "../layouts/PageContainer.jsx";
-import { analyzeContent, analyzeMedia, scanUrl } from "../services/scanService.js";
-import RiskMeter from "../components/RiskMeter.jsx";
-import StatusBadge from "../components/StatusBadge.jsx";
+import ScannerTypeCard from "../components/ScannerTypeCard.jsx";
+import ScannerResultReport from "../components/ScannerResultReport.jsx";
 import LoadingSpinner from "../components/LoadingSpinner.jsx";
 import ErrorAlert from "../components/ErrorAlert.jsx";
 import EmptyState from "../components/EmptyState.jsx";
+import { analyzeContent, scanUrl } from "../services/scanService.js";
 
-const TABS = [
-  { id: "url", label: "URL & Website Scanner", icon: "bi-globe2" },
-  { id: "text", label: "Message, Email & News", icon: "bi-card-heading" },
-  { id: "image", label: "Image & Deepfake Analysis", icon: "bi-image" },
-  { id: "video", label: "Video & Audio Analysis", icon: "bi-camera-video" },
+const SCAN_TYPES = [
+  {
+    id: "url",
+    label: "URL",
+    icon: "bi-globe2",
+    description: "Phishing links, spoofed domains, redirects",
+    inputLabel: "URL or Domain",
+    placeholder: "https://example-login-check.com",
+  },
+  {
+    id: "email",
+    label: "Email",
+    icon: "bi-envelope-at",
+    description: "Phishing emails and impersonation attempts",
+    inputLabel: "Email Content",
+    placeholder: "Paste the full suspicious email here...",
+  },
+  {
+    id: "sms",
+    label: "SMS",
+    icon: "bi-chat-left-text",
+    description: "Payment scams, OTP traps, urgent messages",
+    inputLabel: "SMS or Message Content",
+    placeholder: "Paste the suspicious SMS or chat message here...",
+  },
+  {
+    id: "news",
+    label: "Fake News",
+    icon: "bi-newspaper",
+    description: "Viral claims, social posts, news snippets",
+    inputLabel: "News Article or Post",
+    placeholder: "Paste the suspicious news article or social post here...",
+  },
+  {
+    id: "image",
+    label: "AI Image",
+    icon: "bi-image",
+    description: "Generated images and manipulated visuals",
+    inputLabel: "Image Upload",
+    placeholder: "",
+    comingSoon: true,
+  },
+  {
+    id: "video",
+    label: "Deepfake Video",
+    icon: "bi-camera-video",
+    description: "Synthetic video and manipulated media",
+    inputLabel: "Video Upload",
+    placeholder: "",
+    comingSoon: true,
+  },
 ];
 
-const SAMPLES = {
-  url: [
-    { label: "Phishing Bank Portal", value: "https://hdfc-netbanking-verify.secure-update.xyz/login" },
-    { label: "Shortened Payment Scam", value: "http://bit.ly/claim-bonus-2026" },
-    { label: "Safe Domain", value: "https://google.com" },
-  ],
-  text: [
-    {
-      label: "Urgent Bank SMS Scam",
-      type: "message",
-      value: "URGENT: Your HDFC Bank account is suspended due to missing KYC. Verify your UPI PIN & Aadhaar immediately at http://hdfc-verify-pin.com or account will be permanently blocked within 24 hours.",
-    },
-    {
-      label: "Fake News & Social Scam",
-      type: "news",
-      value: "BREAKING: Reserve Bank of India announces 100% instant cashback on all UPI transactions today only! Enter your ATM PIN at bit.ly/rbi-free-bonus to claim your Rs 50,000 refund now.",
-    },
-    {
-      label: "Fake Job Offer Email",
-      type: "email",
-      value: "Dear Applicant, Congratulations! You are selected for Amazon Remote HR Manager role (Salary: Rs 1,50,000/mo). Transfer Rs 3,500 security deposit for laptop delivery to UPI: hr-amazon@paytm.",
-    },
-  ],
-  image: [
-    { label: "AI Midjourney Portrait Sample", value: "ai_generated_portrait.jpg" },
-    { label: "Manipulated Identity Document", value: "edited_aadhaar_pass.png" },
-  ],
-  video: [
-    { label: "AI Deepfake News Anchor Clip", value: "deepfake_news_anchor.mp4" },
-    { label: "Synthetic Voice Call Audio", value: "synthetic_voice_clone.mp3" },
-  ],
+const SAMPLE_INPUTS = {
+  url: "https://hdfc-netbanking-verify.secure-update.xyz/login",
+  email:
+    "Dear customer, your account has been suspended. Verify your KYC and enter your UPI PIN immediately at http://bank-verify-secure.example to avoid account closure.",
+  sms:
+    "URGENT: Your package is held by customs. Pay Rs 49 now and verify OTP at delivery-update.example or it will be returned.",
+  news:
+    "Breaking: Government announces instant refunds for all citizens today only. Submit Aadhaar, bank details and PIN through this short link to claim.",
 };
 
-function normStatus(c = "") {
-  const norm = String(c).toLowerCase();
-  if (norm.includes("malicious") || norm.includes("high") || norm.includes("phishing") || norm.includes("critical")) return "malicious";
-  if (norm.includes("suspicious") || norm.includes("medium") || norm.includes("may be ai")) return "suspicious";
-  if (norm.includes("safe") || norm.includes("low") || norm.includes("clean") || norm.includes("looks real")) return "safe";
-  return "unknown";
-}
-
 export default function Scanner() {
-  const [activeTab, setActiveTab] = useState("url");
-  const [urlInput, setUrlInput] = useState("");
-  const [textInput, setTextInput] = useState("");
-  const [contentType, setContentType] = useState("message");
+  const [activeTypeId, setActiveTypeId] = useState("url");
+  const [inputs, setInputs] = useState({
+    url: "",
+    email: "",
+    sms: "",
+    news: "",
+  });
   const [selectedFile, setSelectedFile] = useState(null);
-  
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [isScanning, setIsScanning] = useState(false);
 
-  const handleTabChange = (tabId) => {
-    setActiveTab(tabId);
-    setResult(null);
-    setError("");
-  };
+  const activeType = useMemo(
+    () => SCAN_TYPES.find((type) => type.id === activeTypeId) || SCAN_TYPES[0],
+    [activeTypeId],
+  );
 
-  const handlePresetClick = (sample) => {
-    setError("");
+  function selectType(typeId) {
+    setActiveTypeId(typeId);
     setResult(null);
-    if (activeTab === "url") {
-      setUrlInput(sample.value);
-    } else if (activeTab === "text") {
-      setTextInput(sample.value);
-      if (sample.type) setContentType(sample.type);
+    setError("");
+    setSelectedFile(null);
+  }
+
+  function updateInput(value) {
+    setInputs((current) => ({ ...current, [activeTypeId]: value }));
+  }
+
+  function loadSample() {
+    const sample = SAMPLE_INPUTS[activeTypeId];
+    if (sample) {
+      updateInput(sample);
+      setResult(null);
+      setError("");
     }
-  };
+  }
 
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
+  function handleFileChange(event) {
+    const file = event.target.files?.[0];
     if (file) {
       setSelectedFile(file);
     }
-  };
+  }
 
-  const handleScanSubmit = async (e) => {
-    e.preventDefault();
+  async function handleSubmit(event) {
+    event.preventDefault();
     setError("");
     setResult(null);
-    setIsScanning(true);
 
+    if (activeType.comingSoon) {
+      setError(`${activeType.label} scanning is coming soon.`);
+      return;
+    }
+
+    const value = inputs[activeTypeId]?.trim();
+    if (!value) {
+      setError(`Please enter ${activeType.inputLabel.toLowerCase()} to analyze.`);
+      return;
+    }
+
+    setIsScanning(true);
     try {
-      if (activeTab === "url") {
-        if (!urlInput.trim()) throw new Error("Please enter a URL to inspect.");
-        const res = await scanUrl(urlInput);
-        setResult({
-          type: "url",
-          input: urlInput,
-          risk_score: res.risk_score ?? 75,
-          classification: res.result || res.risk_level || res.classification || "Phishing",
-          confidence: res.confidence ?? 92,
-          reasons: res.danger_indicators || res.reasons || ["Phishing domain patterns detected"],
-          explanation: res.explanation || res.recommended_action || "Target URL flagged for suspicious indicators.",
-          recommended_action: res.recommended_action || "Avoid clicking this link or sharing confidential information.",
-          threat_intelligence: res.threat_intelligence,
-          threat_summary: res.threat_summary,
-        });
-      } else if (activeTab === "text") {
-        if (!textInput.trim()) throw new Error("Please enter or paste text to analyze.");
-        const res = await analyzeContent(textInput, contentType);
-        setResult({
-          type: "text",
-          input: textInput.slice(0, 120) + (textInput.length > 120 ? "..." : ""),
-          risk_score: res.scam_probability ?? 80,
-          classification: res.risk_level ?? "High Risk",
-          confidence: 88,
-          reasons: (res.indicators || []).map((i) => `${i.name}: ${i.detail}`),
-          summary: res.summary,
-          urls: res.urls || [],
-          recommended_action: res.recommended_action,
-        });
-      } else if (activeTab === "image" || activeTab === "video") {
-        if (!selectedFile) {
-          // Synthetic demo analysis if no local file selected
-          const demoName = activeTab === "image" ? "ai_generated_sample.jpg" : "deepfake_video_clip.mp4";
-          const isImg = activeTab === "image";
-          setResult({
-            type: activeTab,
-            input: demoName,
-            risk_score: isImg ? 82 : 76,
-            classification: isImg ? "May be AI-made" : "Synthetic Deepfake",
-            confidence: 90,
-            reasons: isImg
-              ? [
-                  "No camera details (EXIF) found",
-                  "Texture noise level is unusually low (3.12)",
-                  "Image entropy indicates synthetic smoothness",
-                  "AI tool keyword matched in image attributes",
-                ]
-              : [
-                  "Frame lip-sync mismatch score: 78%",
-                  "Synthetic speech spectral distortion detected",
-                  "Facial boundary blending artifacts flagged",
-                ],
-            explanation: `The uploaded ${activeTab} exhibit high probability indicators of AI manipulation or deepfake synthesis.`,
-            recommended_action: "Do not trust or distribute this media without verifying the original authentic source.",
-          });
-        } else {
-          const res = await analyzeMedia(selectedFile);
-          setResult({
-            type: activeTab,
-            input: res.filename || selectedFile.name,
-            risk_score: res.ai_likelihood ?? 75,
-            classification: res.risk_level || res.simple_result || "Suspicious",
-            confidence: res.confidence === "High" ? 95 : 70,
-            reasons: (res.indicators || []).map((i) => `${i.name}: ${i.detail}`),
-            explanation: res.explanation,
-            recommended_action: res.recommended_action,
-          });
-        }
+      if (activeTypeId === "url") {
+        const response = await scanUrl(value);
+        setResult(normalizeUrlResult(response, value));
+      } else {
+        const response = await analyzeContent(value, contentTypeFor(activeTypeId));
+        setResult(normalizeTextResult(response, value, activeTypeId));
       }
-    } catch (err) {
-      setError(err.message || "Threat scanning failed. Please try again.");
+    } catch (requestError) {
+      setError(requestError.message || "Scan failed. Please try again.");
     } finally {
       setIsScanning(false);
     }
-  };
+  }
 
-  const handleReset = () => {
-    setUrlInput("");
-    setTextInput("");
+  function resetScanner() {
+    setInputs((current) => ({ ...current, [activeTypeId]: "" }));
     setSelectedFile(null);
     setResult(null);
     setError("");
-  };
+  }
 
   return (
     <PageContainer
-      title="ScamShield Threat Scanner"
-      subtitle="AI-powered analysis for suspicious URLs, scam messages, fake news, and manipulated media."
+      title="AI Security Scanner"
+      subtitle="Analyze URLs, Emails, SMS messages, News Articles, Images, and Videos using AI."
     >
-      {/* ── Scanner Hub Tabs ───────────────────────────────────── */}
-      <div className="scanner-tabs">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            type="button"
-            className={`tab-btn ${activeTab === tab.id ? "active" : ""}`}
-            onClick={() => handleTabChange(tab.id)}
-          >
-            <i className={`bi ${tab.icon} fs-5`} />
-            <span>{tab.label}</span>
-          </button>
-        ))}
-      </div>
+      <div className="scanner-shell">
+        <section className="scanner-type-grid" aria-label="Scan type">
+          {SCAN_TYPES.map((type) => (
+            <ScannerTypeCard
+              key={type.id}
+              type={type}
+              isActive={activeTypeId === type.id}
+              onSelect={selectType}
+            />
+          ))}
+        </section>
 
-      {/* ── Scan Form Container ────────────────────────────────── */}
-      <div className="glass-panel p-4 mb-4">
-        <form onSubmit={handleScanSubmit}>
-          {/* TAB 1: URL & WEB */}
-          {activeTab === "url" && (
-            <div>
-              <label htmlFor="scan-url-input" className="form-label small text-muted text-uppercase tracking-wider fw-bold">
-                Inspect a URL or Domain
-              </label>
-              <div className="input-group input-group-lg border border-info border-opacity-25 rounded-3 bg-dark bg-opacity-60 overflow-hidden">
-                <span className="input-group-text bg-transparent border-0 text-info">
-                  <i className="bi bi-link-45deg fs-4" />
-                </span>
-                <input
-                  id="scan-url-input"
-                  className="form-control bg-transparent border-0 text-white placeholder-secondary fs-6 fw-mono"
-                  type="text"
-                  value={urlInput}
-                  onChange={(e) => setUrlInput(e.target.value)}
-                  placeholder="e.g. https://suspicious-bank-login.com or bit.ly/claim-prize"
-                  disabled={isScanning}
-                />
+        <section className="scanner-workspace">
+          <div className="scanner-input-panel">
+            <div className="scanner-panel-heading">
+              <div>
+                <span className="scanner-eyebrow">Selected module</span>
+                <h2>{activeType.label} Analysis</h2>
               </div>
+              {activeType.comingSoon ? <span className="coming-soon-pill">Coming Soon</span> : null}
             </div>
-          )}
 
-          {/* TAB 2: TEXT / EMAIL / FAKE NEWS */}
-          {activeTab === "text" && (
-            <div>
-              <div className="d-flex align-items-center justify-content-between mb-2">
-                <label htmlFor="scan-text-input" className="form-label small text-muted text-uppercase tracking-wider fw-bold mb-0">
-                  Paste SMS, Email, or Fake News Content
-                </label>
-                <select
-                  className="form-select form-select-sm bg-dark border-secondary border-opacity-25 text-info w-auto fs-8 rounded-2 fw-semibold"
-                  value={contentType}
-                  onChange={(e) => setContentType(e.target.value)}
-                >
-                  <option value="message">SMS / WhatsApp</option>
-                  <option value="email">Phishing Email</option>
-                  <option value="news">Fake News & Article</option>
-                  <option value="job">Job Offer / Reward</option>
-                </select>
-              </div>
-              <textarea
-                id="scan-text-input"
-                className="form-control bg-dark bg-opacity-60 border border-info border-opacity-25 text-white p-3 rounded-3 fs-6"
-                rows={4}
-                value={textInput}
-                onChange={(e) => setTextInput(e.target.value)}
-                placeholder="Paste a suspicious message, email, or news snippet here..."
-                disabled={isScanning}
-              />
-            </div>
-          )}
-
-          {/* TAB 3 & TAB 4: IMAGE & VIDEO DEEPFAKE */}
-          {(activeTab === "image" || activeTab === "video") && (
-            <div>
-              <label className="form-label small text-muted text-uppercase tracking-wider fw-bold mb-2">
-                Upload {activeTab === "image" ? "Image / Photo" : "Video / Audio"} File for Deepfake Forensics
-              </label>
-              <div className="upload-dropzone" onClick={() => document.getElementById("media-file-input")?.click()}>
-                <div className="upload-icon">
-                  <i className={`bi ${activeTab === "image" ? "bi-file-earmark-image" : "bi-file-earmark-play"}`} />
+            <form onSubmit={handleSubmit}>
+              {activeTypeId === "url" ? (
+                <div className="scanner-field">
+                  <label htmlFor="scanner-url">{activeType.inputLabel}</label>
+                  <div className="scanner-url-input">
+                    <i className="bi bi-link-45deg" />
+                    <input
+                      id="scanner-url"
+                      type="text"
+                      value={inputs.url}
+                      onChange={(event) => updateInput(event.target.value)}
+                      placeholder={activeType.placeholder}
+                      disabled={isScanning}
+                    />
+                  </div>
                 </div>
-                <h5 className="text-light fw-bold mb-1 fs-6">
-                  {selectedFile ? selectedFile.name : `Click or Drag & Drop ${activeTab === "image" ? "Image" : "Media"} File`}
-                </h5>
-                <p className="text-muted small mb-0">
-                  {selectedFile
-                    ? `${(selectedFile.size / 1024).toFixed(1)} KB — Ready for pixel/frame inspection`
-                    : `Supports ${activeTab === "image" ? "JPG, PNG, WebP" : "MP4, WebM, WAV, MP3"} up to 50MB. (Or run with sample test data)`}
-                </p>
-                <input
-                  id="media-file-input"
-                  type="file"
-                  className="d-none"
-                  accept={activeTab === "image" ? "image/*" : "video/*,audio/*"}
-                  onChange={handleFileChange}
-                />
-              </div>
-            </div>
-          )}
+              ) : null}
 
-          {/* Sample Presets */}
-          {SAMPLES[activeTab] && (
-            <div className="sample-presets">
-              <span className="text-muted small fw-bold text-uppercase tracking-wider me-2" style={{ fontSize: "0.72rem" }}>
-                <i className="bi bi-magic me-1" />
-                Quick Test Samples:
-              </span>
-              {SAMPLES[activeTab].map((sample, idx) => (
-                <button
-                  key={idx}
-                  type="button"
-                  className="preset-chip"
-                  onClick={() => handlePresetClick(sample)}
-                >
-                  {sample.label}
+              {["email", "sms", "news"].includes(activeTypeId) ? (
+                <div className="scanner-field">
+                  <label htmlFor="scanner-text">{activeType.inputLabel}</label>
+                  <textarea
+                    id="scanner-text"
+                    value={inputs[activeTypeId]}
+                    onChange={(event) => updateInput(event.target.value)}
+                    placeholder={activeType.placeholder}
+                    rows={8}
+                    disabled={isScanning}
+                  />
+                </div>
+              ) : null}
+
+              {["image", "video"].includes(activeTypeId) ? (
+                <div className="scanner-field">
+                  <label>{activeType.inputLabel}</label>
+                  <div className="scanner-dropzone">
+                    <input
+                      id="scanner-file"
+                      type="file"
+                      accept={activeTypeId === "image" ? "image/*" : "video/*"}
+                      onChange={handleFileChange}
+                      disabled
+                    />
+                    <i className={`bi ${activeTypeId === "image" ? "bi-cloud-upload" : "bi-film"}`} />
+                    <strong>{selectedFile?.name || `${activeType.label} scanning is coming soon`}</strong>
+                    <span>
+                      This module will be enabled when production media analysis is available.
+                    </span>
+                  </div>
+                </div>
+              ) : null}
+
+              {!activeType.comingSoon && SAMPLE_INPUTS[activeTypeId] ? (
+                <button className="scanner-sample-button" type="button" onClick={loadSample}>
+                  <i className="bi bi-magic" />
+                  Use sample
                 </button>
-              ))}
+              ) : null}
+
+              <div className="scanner-actions">
+                <button
+                  className="btn-premium-primary"
+                  type="submit"
+                  disabled={isScanning || activeType.comingSoon}
+                >
+                  {isScanning ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm" aria-hidden="true" />
+                      Analyzing
+                    </>
+                  ) : (
+                    <>
+                      Run AI Scan
+                      <i className="bi bi-arrow-right" />
+                    </>
+                  )}
+                </button>
+                <button className="btn-premium-secondary" type="button" onClick={resetScanner}>
+                  Reset
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <aside className="scanner-context-panel">
+            <span className="scanner-eyebrow">Detection profile</span>
+            <h3>{activeType.label}</h3>
+            <p>{activeType.description}</p>
+            <div className="context-list">
+              <span>
+                <i className="bi bi-check-circle" />
+                Explainable classification
+              </span>
+              <span>
+                <i className="bi bi-check-circle" />
+                Risk scoring
+              </span>
+              <span>
+                <i className="bi bi-check-circle" />
+                Actionable recommendations
+              </span>
             </div>
-          )}
+          </aside>
+        </section>
 
-          {/* Scan Action Buttons */}
-          <div className="d-flex align-items-center gap-3 mt-4">
-            <button
-              type="submit"
-              className="btn btn-info btn-lg px-4 fs-6 fw-bold rounded-3 scan-button d-flex align-items-center gap-2"
-              disabled={isScanning}
-            >
-              {isScanning ? (
-                <>
-                  <span className="spinner-border spinner-border-sm text-dark" role="status" aria-hidden="true" />
-                  <span>Analyzing AI Signals…</span>
-                </>
-              ) : (
-                <>
-                  <i className="bi bi-cpu-fill" />
-                  <span>Run ScamShield Scan</span>
-                </>
-              )}
-            </button>
-            {result && (
-              <button
-                type="button"
-                className="btn btn-outline-secondary rounded-3 px-3 py-2 text-muted"
-                onClick={handleReset}
-              >
-                <i className="bi bi-arrow-counterclockwise me-1" />
-                Reset
-              </button>
-            )}
+        {error ? <ErrorAlert message={error} onDismiss={() => setError("")} /> : null}
+
+        {isScanning ? (
+          <div className="scanner-loading-panel">
+            <div className="radar-hud">
+              <i className="bi bi-shield-shaded text-info fs-3" />
+            </div>
+            <LoadingSpinner message="Analyzing threat indicators and preparing explainable report..." />
           </div>
-        </form>
-      </div>
+        ) : null}
 
-      {/* ── Error Banner ───────────────────────────────────────── */}
-      {error && <ErrorAlert message={error} onDismiss={() => setError("")} />}
-
-      {/* ── Loading HUD ────────────────────────────────────────── */}
-      {isScanning && (
-        <div className="glass-panel p-5 text-center animate-fade-in">
-          <div className="radar-hud">
-            <i className="bi bi-shield-shaded text-info fs-3" />
-          </div>
-          <LoadingSpinner message="Scanning pixel entropy, urgency indicators, metadata signatures & neural threat vectors…" />
-        </div>
-      )}
-
-      {/* ── Empty State ────────────────────────────────────────── */}
-      {!result && !isScanning && !error && (
-        <div className="animate-fade-in">
+        {!result && !isScanning && !error ? (
           <EmptyState
             icon="bi-shield-lock"
-            title="Multi-Modal Threat Engine Ready"
-            description="Select a detection mode above or click one of the Quick Test Samples to run instant deepfake and scam evaluation."
+            title="Scanner Ready"
+            description="Choose a scan type, submit suspicious content, and ScamShield will return a risk report."
           />
-        </div>
-      )}
+        ) : null}
 
-      {/* ── Result Presentation ────────────────────────────────── */}
-      {result && !isScanning && (
-        <div className="animate-fade-in">
-          <div className="glass-panel p-4 mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
-            <div className="d-flex align-items-center gap-3">
-              <span className="badge bg-info bg-opacity-20 text-info border border-info border-opacity-30 p-2 rounded-3">
-                <i className="bi bi-shield-check fs-4" />
-              </span>
-              <div>
-                <span className="text-muted small text-uppercase tracking-wider fw-bold d-block">Target Scanned</span>
-                <strong className="text-light fs-6 fw-mono">{result.input}</strong>
-              </div>
-            </div>
-            <div className="d-flex align-items-center gap-2">
-              <StatusBadge status={normStatus(result.classification)} />
-              <span className="badge bg-dark border border-secondary border-opacity-25 text-info rounded-pill px-3 py-1.5 fs-8 fw-bold">
-                {result.confidence}% Confidence
-              </span>
-            </div>
-          </div>
-
-          <div className="row g-4">
-            {/* Left Column: Meter & Indicator Tags */}
-            <div className="col-12 col-lg-5">
-              <div className="d-flex flex-column gap-4">
-                <RiskMeter score={result.risk_score} classification={result.classification} />
-
-                <div className="glass-panel p-4">
-                  <div className="d-flex align-items-center justify-content-between mb-3 border-bottom border-secondary border-opacity-20 pb-2">
-                    <h4 className="fs-6 fw-bold text-light mb-0 text-uppercase tracking-wider">
-                      <i className="bi bi-list-check text-info me-2" />
-                      Engine Findings ({result.reasons?.length || 0})
-                    </h4>
-                  </div>
-                  <div className="d-flex flex-column gap-2">
-                    {result.reasons && result.reasons.length > 0 ? (
-                      result.reasons.map((reason, idx) => (
-                        <div key={idx} className="indicator-tag danger d-flex align-items-start gap-2 text-light">
-                          <i className="bi bi-exclamation-triangle-fill text-warning fs-6 flex-shrink-0 mt-0.5" />
-                          <span>{reason}</span>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="indicator-tag safe d-flex align-items-center gap-2 text-success">
-                        <i className="bi bi-check-circle-fill fs-6" />
-                        <span>No major threat indicators flagged.</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column: AI Analysis & Action */}
-            <div className="col-12 col-lg-7">
-              <div className="d-flex flex-column gap-4">
-                {/* AI Explanation Card */}
-                <div className="glass-panel p-4">
-                  <div className="d-flex align-items-center gap-2 text-info mb-3">
-                    <i className="bi bi-robot fs-4" />
-                    <h3 className="h6 fw-bold mb-0 text-uppercase tracking-wider text-light">
-                      AI Threat Explanation
-                    </h3>
-                  </div>
-                  <p className="text-light lead fs-6 mb-0" style={{ lineHeight: "1.6" }}>
-                    {result.explanation || result.summary || "The neural detection engine evaluated the payload and assigned a risk score based on pattern matching and forensic indicators."}
-                  </p>
-                </div>
-
-                {/* Recommended Safety Action */}
-                <div className="glass-panel p-4 border-warning border-opacity-30">
-                  <div className="d-flex align-items-center gap-2 text-warning mb-2">
-                    <i className="bi bi-shield-exclamation fs-4" />
-                    <h3 className="h6 fw-bold mb-0 text-uppercase tracking-wider text-light">
-                      Recommended Action
-                    </h3>
-                  </div>
-                  <p className="text-muted mb-0 fs-6">
-                    {result.recommended_action || "Do not proceed, click links, or share any personal credentials."}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+        <ScannerResultReport result={result} />
+      </div>
     </PageContainer>
   );
+}
+
+function contentTypeFor(typeId) {
+  if (typeId === "email") return "email";
+  if (typeId === "news") return "news";
+  return "message";
+}
+
+function normalizeUrlResult(response, input) {
+  return {
+    input,
+    risk_score: response.risk_score ?? response.scam_probability ?? 0,
+    classification: response.classification || response.risk_level || response.result || "Unknown",
+    confidence: response.confidence,
+    summary:
+      response.explanation ||
+      response.summary ||
+      response.recommended_action ||
+      "The URL scan completed, but no detailed AI summary was returned.",
+    reasons: response.reasons || response.danger_indicators || response.indicators?.map(indicatorText) || [],
+    recommendations: [response.recommended_action].filter(Boolean),
+    threat_intelligence: response.threat_intelligence,
+    domain: response.domain,
+  };
+}
+
+function normalizeTextResult(response, input, typeId) {
+  return {
+    input: input.length > 140 ? `${input.slice(0, 140)}...` : input,
+    risk_score: response.scam_probability ?? response.risk_score ?? 0,
+    classification: response.risk_level || response.classification || "Unknown",
+    confidence: response.confidence,
+    summary:
+      response.summary ||
+      response.explanation ||
+      `${SCAN_TYPES.find((type) => type.id === typeId)?.label || "Content"} analysis completed.`,
+    reasons: response.indicators?.map(indicatorText) || response.reasons || [],
+    recommendations: [response.recommended_action].filter(Boolean),
+    threat_intelligence: response.threat_intelligence,
+  };
+}
+
+function indicatorText(indicator) {
+  if (typeof indicator === "string") return indicator;
+  return [indicator.name, indicator.detail].filter(Boolean).join(": ");
 }
