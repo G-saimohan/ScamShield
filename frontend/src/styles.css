@@ -1,50 +1,53 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&display=swap");
-
 :root {
   color-scheme: dark;
   font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --color-bg: #0b1220;
-  --color-surface: rgba(14, 21, 40, 0.88);
-  --color-surface-strong: rgba(15, 22, 48, 0.94);
-  --color-surface-muted: rgba(16, 24, 56, 0.72);
-  --color-surface-border: rgba(255, 255, 255, 0.08);
-  --color-surface-border-strong: rgba(148, 163, 184, 0.22);
-  --color-surface-hover: rgba(248, 250, 252, 0.03);
-  --color-accent: #3dd6db;
-  --color-info: #7dd3fc;
-  --color-secondary: #7c88b5;
+  --font-sans: "Inter", "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+
+  --color-bg: #071026;
+  --color-bg-alt: #0c1732;
+  --color-surface: rgba(13, 20, 36, 0.88);
+  --color-surface-strong: rgba(18, 26, 46, 0.94);
+  --color-surface-muted: rgba(14, 21, 38, 0.72);
+  --color-surface-border: rgba(116, 167, 233, 0.15);
+  --color-surface-border-strong: rgba(79, 146, 255, 0.24);
+  --color-surface-hover: rgba(255, 255, 255, 0.05);
+
+  --color-accent: #54b8ff;
+  --color-accent-soft: rgba(84, 184, 255, 0.16);
+  --color-accent-glow: rgba(84, 184, 255, 0.28);
+  --color-accent-glow-strong: rgba(84, 184, 255, 0.4);
+  --color-accent-border: rgba(84, 184, 255, 0.2);
+  --color-info: #a0d8ff;
+  --color-info-soft: rgba(160, 216, 255, 0.16);
   --color-success: #22c55e;
   --color-warning: #f59e0b;
   --color-danger: #f43f5e;
+
   --color-risk-safe: #22c55e;
   --color-risk-low: #38bdf8;
   --color-risk-medium: #fbbf24;
   --color-risk-high: #fb7185;
   --color-risk-critical: #ef4444;
-  --color-accent-soft: rgba(61, 214, 219, 0.18);
-  --color-accent-glow: rgba(61, 214, 219, 0.24);
-  --color-accent-glow-strong: rgba(61, 214, 219, 0.4);
-  --color-secondary-soft: rgba(124, 136, 181, 0.08);
-  --color-info-soft: rgba(125, 211, 252, 0.16);
-  --color-success-soft: rgba(34, 197, 94, 0.08);
-  --color-warning-soft: rgba(245, 158, 11, 0.08);
-  --color-danger-soft: rgba(244, 63, 94, 0.08);
-  --color-success-ultrasoft: rgba(34, 197, 94, 0.03);
+
   --color-text: #f8fafc;
   --color-text-muted: #94a3b8;
-  --color-code: #cbd5e1;
+  --color-text-soft: #cbd5e1;
+  --color-muted: #7b8cb7;
+  --color-border: rgba(255, 255, 255, 0.08);
+  --color-shadow: rgba(0, 0, 0, 0.45);
   --color-overlay: rgba(7, 10, 18, 0.5);
-  --color-overlay-soft: rgba(255, 255, 255, 0.04);
+  --color-overlay-soft: rgba(255, 255, 255, 0.05);
 }
 
 body {
   min-width: 320px;
   min-height: 100vh;
   background-color: var(--color-bg);
-  background-image: 
-    radial-gradient(circle at 15% 15%, var(--color-accent-soft) 0%, transparent 45%),
-    radial-gradient(circle at 85% 85%, var(--color-secondary-soft) 0%, transparent 50%),
-    radial-gradient(circle at 50% 50%, var(--color-success-ultrasoft) 0%, transparent 60%);
+  background-image:
+    radial-gradient(circle at 12% 12%, rgba(84, 184, 255, 0.08) 0%, transparent 32%),
+    radial-gradient(circle at 88% 80%, rgba(160, 216, 255, 0.06) 0%, transparent 28%),
+    radial-gradient(circle at 50% 50%, rgba(34, 197, 94, 0.03) 0%, transparent 38%);
   background-attachment: fixed;
 }
 
