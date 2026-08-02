@@ -23,13 +23,17 @@ else:
             os.environ.setdefault(key.strip(), value.strip())
 
 
+_INSECURE_SECRET_KEY = "scamshield-demo-secret"
+_INSECURE_JWT_SECRET_KEY = "scamshield-development-jwt-secret"
+
+
 class Config:
     """Default application configuration loaded from environment variables."""
 
     PROJECT_ROOT = PROJECT_ROOT
     SECRET_KEY = os.environ.get(
         "SECRET_KEY",
-        os.environ.get("SCAMSHIELD_SECRET_KEY", "scamshield-demo-secret"),
+        os.environ.get("SCAMSHIELD_SECRET_KEY", _INSECURE_SECRET_KEY),
     )
     DEBUG = os.environ.get(
         "DEBUG",
@@ -46,14 +50,32 @@ class Config:
     }
     JWT_SECRET_KEY = os.environ.get(
         "JWT_SECRET_KEY",
-        os.environ.get("SECRET_KEY", "scamshield-development-jwt-secret"),
+        os.environ.get("SECRET_KEY", _INSECURE_JWT_SECRET_KEY),
     )
     JWT_EXPIRATION_MINUTES = int(os.environ.get("JWT_EXPIRATION_MINUTES", "60"))
+    JWT_REFRESH_EXPIRATION_DAYS = int(
+        os.environ.get("JWT_REFRESH_EXPIRATION_DAYS", "30")
+    )
     BCRYPT_ROUNDS = int(os.environ.get("BCRYPT_ROUNDS", "12"))
     LOGIN_MAX_FAILED_ATTEMPTS = int(os.environ.get("LOGIN_MAX_FAILED_ATTEMPTS", "5"))
     LOGIN_RATE_LIMIT_WINDOW_MINUTES = int(
         os.environ.get("LOGIN_RATE_LIMIT_WINDOW_MINUTES", "15")
     )
+    API_RATE_LIMIT_MAX_REQUESTS = int(
+        os.environ.get("API_RATE_LIMIT_MAX_REQUESTS", "30")
+    )
+    API_RATE_LIMIT_WINDOW_SECONDS = int(
+        os.environ.get("API_RATE_LIMIT_WINDOW_SECONDS", "60")
+    )
+    PASSWORD_RESET_TOKEN_EXPIRATION_MINUTES = int(
+        os.environ.get("PASSWORD_RESET_TOKEN_EXPIRATION_MINUTES", "30")
+    )
+    SMTP_HOST = os.environ.get("SMTP_HOST", "")
+    SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+    SMTP_USERNAME = os.environ.get("SMTP_USERNAME", "")
+    SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+    SMTP_FROM = os.environ.get("SMTP_FROM", "no-reply@scamshield.local")
+    FRONTEND_BASE_URL = os.environ.get("FRONTEND_BASE_URL", "http://127.0.0.1:5000")
     LEGACY_SQLITE_PATH = os.environ.get(
         "SCAMSHIELD_DATABASE_PATH",
         str(PROJECT_ROOT / "scamshield.db"),
@@ -70,3 +92,38 @@ class Config:
     DEMO_EMAIL = os.environ.get("SCAMSHIELD_DEMO_EMAIL", "demo@scamshield.com")
     DEMO_PASSWORD = os.environ.get("SCAMSHIELD_DEMO_PASSWORD", "scamshield123")
     JSON_SORT_KEYS = False
+
+    @classmethod
+    def validate(cls) -> list[str]:
+        """Return a list of production-readiness warnings for the current config.
+
+        Raises RuntimeError if the app is about to run in a non-debug
+        environment with secrets that still have their insecure defaults,
+        since that combination is unsafe to deploy.
+        """
+        warnings: list[str] = []
+        if cls.SECRET_KEY == _INSECURE_SECRET_KEY:
+            warnings.append(
+                "SECRET_KEY is using the insecure built-in default. "
+                "Set the SECRET_KEY environment variable."
+            )
+        if cls.JWT_SECRET_KEY == _INSECURE_JWT_SECRET_KEY:
+            warnings.append(
+                "JWT_SECRET_KEY is using the insecure built-in default. "
+                "Set the JWT_SECRET_KEY environment variable."
+            )
+        if cls.CORS_ORIGINS == "*":
+            warnings.append(
+                "CORS_ORIGINS is set to '*'. Restrict this to known frontend "
+                "origins before deploying to production."
+            )
+
+        secret_warnings = [
+            w for w in warnings if w.startswith(("SECRET_KEY", "JWT_SECRET_KEY"))
+        ]
+        if not cls.DEBUG and secret_warnings:
+            raise RuntimeError(
+                "Refusing to start with insecure configuration outside DEBUG "
+                "mode:\n- " + "\n- ".join(secret_warnings)
+            )
+        return warnings

@@ -48,3 +48,38 @@ def validate_login_payload(payload: dict) -> dict:
         raise ValidationError(details)
 
     return {"email": email, "password": password}
+
+
+def validate_password_reset_request_payload(payload: dict) -> dict:
+    """Validate and normalize a password reset request payload."""
+    email = (payload.get("email") or "").strip().lower()
+
+    details = {}
+    if not email:
+        details["email"] = "Email is required"
+    elif not EMAIL_PATTERN.match(email):
+        details["email"] = "Email must be valid"
+
+    if details:
+        raise ValidationError(details)
+
+    return {"email": email}
+
+
+def validate_password_reset_confirm_payload(payload: dict) -> dict:
+    """Validate and normalize a password reset confirmation payload."""
+    token = (payload.get("token") or "").strip()
+    new_password = payload.get("new_password") or ""
+
+    details = {}
+    if not token:
+        details["token"] = "Reset token is required"
+    if not new_password:
+        details["new_password"] = "New password is required"
+    elif len(new_password) < 8:
+        details["new_password"] = "Password must be at least 8 characters"
+
+    if details:
+        raise ValidationError(details)
+
+    return {"token": token, "new_password": new_password}

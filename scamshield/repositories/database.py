@@ -30,6 +30,7 @@ COLLECTIONS = {
     "notifications": "notifications",
     "feedback": "feedback",
     "audit_logs": "audit_logs",
+    "revoked_tokens": "revoked_tokens",
 }
 
 SEED_REPORTS = [
@@ -224,6 +225,12 @@ def get_database():
         return _mongo_db
     except ServerSelectionTimeoutError as error:
         current_app.logger.exception("mongodb_timeout")
+        # Surface a readable reason so health endpoint can indicate the memory fallback
+        try:
+            current_app.config["DATABASE_BACKEND_REASON"] = "memory-fallback"
+        except Exception:
+            # ignore if app context changes
+            pass
         if not current_app.config["MONGODB_STRICT"]:
             return _use_memory_fallback("mongodb_timeout using in-memory database")
         raise DatabaseConnectionError("MongoDB connection timed out") from error
@@ -280,6 +287,10 @@ def create_indexes(database) -> None:
     database[COLLECTIONS["notifications"]].create_index([("created_at", ASCENDING)])
     database[COLLECTIONS["feedback"]].create_index([("created_at", ASCENDING)])
     database[COLLECTIONS["audit_logs"]].create_index([("created_at", ASCENDING)])
+    database[COLLECTIONS["revoked_tokens"]].create_index(
+        [("jti", ASCENDING)], unique=True
+    )
+    database[COLLECTIONS["revoked_tokens"]].create_index([("expires_at", ASCENDING)])
     current_app.logger.info("mongodb_indexes_ensured")
 
 
@@ -292,6 +303,14 @@ def seed_database(database) -> None:
     for report in SEED_REPORTS:
         reports.insert_one(dict(report))
     current_app.logger.info("seed_reports_inserted count=%s", len(SEED_REPORTS))
+
+
+def reset_database_state() -> None:
+    """Clear cached database handles. Intended for use in tests only."""
+    global _mongo_client, _mongo_db, _memory_db
+    _mongo_client = None
+    _mongo_db = None
+    _memory_db = None
 
 
 def now_document() -> dict:

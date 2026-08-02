@@ -54,7 +54,7 @@ export default function Navbar({ onToggleSidebar }) {
           <input
             type="text"
             className="form-control bg-transparent border-0 text-white placeholder-secondary"
-            placeholder="Search threats, domains, URLs..."
+            placeholder="Search threats, URLs, and reports..."
             aria-label="Search"
             disabled
           />

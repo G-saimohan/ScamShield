@@ -1,5 +1,10 @@
 export const TOKEN_STORAGE_KEY = "scamshield_access_token";
+export const REFRESH_TOKEN_STORAGE_KEY = "scamshield_refresh_token";
 
+// NOTE: tokens are kept in localStorage for simplicity, which is readable by
+// any script running on the page (XSS risk). A hardened deployment should
+// move to an httpOnly, Secure, SameSite=strict cookie issued by the backend
+// instead, with CSRF protection on state-changing requests.
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "";
 
 export function getStoredToken() {
@@ -12,19 +17,22 @@ export function setStoredToken(token) {
   }
 }
 
-export function clearStoredToken() {
-  localStorage.removeItem(TOKEN_STORAGE_KEY);
+export function getStoredRefreshToken() {
+  return localStorage.getItem(REFRESH_TOKEN_STORAGE_KEY);
 }
 
-export async function apiRequest(path, options = {}) {
-  const {
-    method = "GET",
-    body,
-    headers = {},
-    auth = true,
-    isFormData = false,
-  } = options;
+export function setStoredRefreshToken(token) {
+  if (token) {
+    localStorage.setItem(REFRESH_TOKEN_STORAGE_KEY, token);
+  }
+}
 
+export function clearStoredToken() {
+  localStorage.removeItem(TOKEN_STORAGE_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_STORAGE_KEY);
+}
+
+async function requestOnce(path, method, body, headers, isFormData, auth) {
   const token = getStoredToken();
   const requestHeaders = {
     ...(!isFormData ? { "Content-Type": "application/json" } : {}),
@@ -42,6 +50,62 @@ export async function apiRequest(path, options = {}) {
   const data = contentType.includes("application/json")
     ? await response.json()
     : { success: response.ok, message: await response.text() };
+
+  return { response, data };
+}
+
+async function tryRefreshAccessToken() {
+  const refreshToken = getStoredRefreshToken();
+  if (!refreshToken) return false;
+
+  const res = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
+  if (!res.ok) return false;
+
+  const data = await res.json().catch(() => null);
+  const newAccessToken = data?.data?.access_token;
+  if (!newAccessToken) return false;
+
+  setStoredToken(newAccessToken);
+  return true;
+}
+
+export async function apiRequest(path, options = {}) {
+  const {
+    method = "GET",
+    body,
+    headers = {},
+    auth = true,
+    isFormData = false,
+  } = options;
+
+  let { response, data } = await requestOnce(
+    path,
+    method,
+    body,
+    headers,
+    isFormData,
+    auth
+  );
+
+  // A 401 on an authenticated request might just mean the access token
+  // expired. Try once to refresh it transparently before giving up.
+  if (!response.ok && response.status === 401 && auth) {
+    const refreshed = await tryRefreshAccessToken();
+    if (refreshed) {
+      ({ response, data } = await requestOnce(
+        path,
+        method,
+        body,
+        headers,
+        isFormData,
+        auth
+      ));
+    }
+  }
 
   if (!response.ok) {
     const error = new Error(data.error || data.message || "Request failed");

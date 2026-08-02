@@ -1,3 +1,12 @@
+Metadata-Version: 2.4
+Name: scamshield
+Version: 0.1.0
+Summary: ScamShield fraud detection and phishing analysis web application
+Author: ScamShield Team
+Project-URL: Homepage, https://github.com/your-org/ScamShield
+Requires-Python: >=3.11
+Description-Content-Type: text/markdown
+
 # ScamShield AI
 
 An all-in-one scam awareness and threat-intelligence dashboard for analyzing suspicious messages, URLs, images, and videos.

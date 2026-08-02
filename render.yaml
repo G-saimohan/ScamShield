@@ -3,7 +3,7 @@ services:
     name: scamshield
     env: python
     plan: free
-    buildCommand: pip install -r requirements.txt && cd frontend && npm ci && npm run build
+    buildCommand: pip install -r requirements.txt && cd frontend && rm -rf dist && npm ci && npm run build
     startCommand: gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --timeout 120
     healthCheckPath: /api/health
     envVars:
@@ -20,7 +20,7 @@ services:
       - key: DEBUG
         value: "False"
       - key: CORS_ORIGINS
-        value: "*"
+        value: "https://phishing-url-xjgv.onrender.com"
       - key: MONGODB_STRICT
         value: "True"
       - key: MONGODB_TIMEOUT_MS

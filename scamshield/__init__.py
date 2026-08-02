@@ -1,11 +1,13 @@
 """Application factory for ScamShield."""
 
+import os
 from urllib.parse import urlparse
 
 from flask import Flask
 
 from scamshield.config import Config
 from scamshield.extensions import cors
+from scamshield.middleware.api_rate_limiting import register_api_rate_limiting
 from scamshield.middleware.request_logging import register_request_logging
 from scamshield.repositories.database import init_db
 from scamshield.routes import register_blueprints
@@ -25,6 +27,8 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     app.config["FRONTEND_DIST_DIR"] = str(frontend_dist)
 
     configure_logging(app)
+    for warning in config_class.validate():
+        app.logger.warning("insecure_config_warning message=%r", warning)
     app.logger.info(
         "env_loaded mongodb_uri_configured=%s mongodb_host=%s database=%s "
         "debug=%s cors_origins=%s strict=%s",
@@ -46,6 +50,23 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     register_blueprints(app)
     register_error_handlers(app)
     register_request_logging(app)
+    register_api_rate_limiting(app)
+    # Production-time frontend build check: log a CRITICAL warning if missing
+    try:
+        if not app.config.get("DEBUG", False):
+            dist_dir = app.config.get("FRONTEND_DIST_DIR")
+            index_exists = os.path.exists(os.path.join(dist_dir, "index.html"))
+            assets_exists = os.path.isdir(os.path.join(dist_dir, "assets"))
+            if not (index_exists and assets_exists):
+                app.logger.critical(
+                    "frontend_build_missing frontend_dist=%s index_exists=%s assets_exists=%s",
+                    dist_dir,
+                    index_exists,
+                    assets_exists,
+                )
+    except Exception:
+        # Fail safe: do not prevent app startup for unexpected errors while checking filesystem
+        app.logger.exception("frontend_build_check_failed")
 
     app.logger.info("ScamShield application startup complete")
     return app
