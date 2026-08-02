@@ -7,6 +7,12 @@ import ErrorAlert from "../components/ErrorAlert.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 import { formatDateTime, riskBadgeClass } from "../utils/formatters.js";
 
+const QUICK_STATS = [
+  { label: "Signals Monitored", value: "120K+", detail: "reputation checks" },
+  { label: "Live Sources", value: "18", detail: "threat feeds" },
+  { label: "Coverage", value: "24/7", detail: "watch posture" },
+];
+
 export default function ThreatIntelligence() {
   const [domain, setDomain] = useState("");
   const [record, setRecord] = useState(null);
@@ -55,106 +61,128 @@ export default function ThreatIntelligence() {
   return (
     <PageContainer
       title="Threat Intelligence"
-      subtitle="Query domain reputation databases and review active malware / phishing campaigns."
+      subtitle="Investigate domain reputation, malicious infrastructure, and active scam campaigns with a professional intelligence workflow."
     >
-      <form className="scan-form bg-dark bg-opacity-70 border border-secondary border-opacity-25 rounded-4 p-4 mb-4 shadow-sm" onSubmit={lookupDomain}>
-        <div className="flex-grow-1 mb-3 mb-md-0">
-          <label htmlFor="threat-domain-input" className="form-label small text-muted text-uppercase tracking-wider fw-bold">
-            Domain Name Lookup
-          </label>
-          <div className="input-group input-group-lg border border-secondary border-opacity-20 rounded-3 bg-dark bg-opacity-50 overflow-hidden">
-            <span className="input-group-text bg-transparent border-0 text-muted">
-              <i className="bi bi-globe" />
-            </span>
-            <input
-              id="threat-domain-input"
-              className="form-control bg-transparent border-0 text-white placeholder-secondary fs-6"
-              value={domain}
-              onChange={(event) => setDomain(event.target.value)}
-              placeholder="e.g. malicious-site.com"
-              required
-              disabled={isLoading}
-            />
+      <div className="threat-shell">
+        <section className="glass-panel threat-hero">
+          <div className="threat-hero-copy">
+            <span className="section-kicker">Threat intelligence command center</span>
+            <h2>Investigate suspicious infrastructure with explainable context.</h2>
+            <p>
+              ScamShield combines live lookup and historical telemetry so analysts can judge reputation,
+              urgency, and follow-up action in a single view.
+            </p>
           </div>
-        </div>
-        <div className="d-flex gap-2 align-items-end">
-          <button className="btn btn-info btn-lg px-4 fs-6 fw-bold rounded-3 scan-button" type="submit" disabled={isLoading}>
-            Lookup
-          </button>
-          <button className="btn btn-outline-light btn-lg px-4 fs-6 fw-bold rounded-3 scan-button" type="button" onClick={loadTopThreats} disabled={isLoading}>
-            Top Threats
-          </button>
-        </div>
-      </form>
-
-      {error ? <ErrorAlert message={error} onDismiss={() => setError("")} /> : null}
-
-      {isLoading ? (
-        <div className="card border border-secondary border-opacity-25 bg-dark bg-opacity-70 text-white rounded-4 p-5 shadow-sm">
-          <LoadingSpinner message="Searching global threat reputation database records..." />
-        </div>
-      ) : null}
-
-      {record && !isLoading ? (
-        <div className="row justify-content-center">
-          <div className="col-12">
-            <ThreatIntelCard threatIntel={record} domainName={record.domain} />
+          <div className="threat-hero-stats">
+            {QUICK_STATS.map((stat) => (
+              <div key={stat.label} className="threat-stat-card">
+                <strong>{stat.value}</strong>
+                <span>{stat.label}</span>
+                <small>{stat.detail}</small>
+              </div>
+            ))}
           </div>
-        </div>
-      ) : null}
+        </section>
 
-      {topThreats.length > 0 && !isLoading ? (
-        <div className="card border border-secondary border-opacity-25 bg-dark bg-opacity-70 text-white rounded-4 shadow-sm overflow-hidden animate-fade-in">
-          <div className="card-header border-bottom border-secondary border-opacity-25 bg-dark bg-opacity-40 p-3 d-flex align-items-center">
-            <i className="bi bi-exclamation-triangle text-danger me-2 fs-5 animate-pulse" />
-            <h3 className="h6 fw-bold mb-0 text-light text-uppercase tracking-wider">Database Top Threat Targets</h3>
+        <section className="glass-panel threat-lookup-panel">
+          <form onSubmit={lookupDomain}>
+            <div className="threat-lookup-field">
+              <label htmlFor="threat-domain-input">Domain lookup</label>
+              <div className="threat-input-group">
+                <span>
+                  <i className="bi bi-globe" />
+                </span>
+                <input
+                  id="threat-domain-input"
+                  value={domain}
+                  onChange={(event) => setDomain(event.target.value)}
+                  placeholder="e.g. malicious-site.com"
+                  required
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+            <div className="threat-actions">
+              <button className="btn-premium-primary" type="submit" disabled={isLoading}>
+                <i className="bi bi-search" />
+                Lookup
+              </button>
+              <button className="btn-premium-secondary" type="button" onClick={loadTopThreats} disabled={isLoading}>
+                <i className="bi bi-bar-chart-line" />
+                Top threats
+              </button>
+            </div>
+          </form>
+        </section>
+
+        {error ? <ErrorAlert message={error} onDismiss={() => setError("")} /> : null}
+
+        {isLoading ? (
+          <div className="glass-panel threat-loading-panel">
+            <LoadingSpinner message="Searching global threat reputation databases..." />
           </div>
-          <div className="card-body p-0">
+        ) : null}
+
+        {record && !isLoading ? (
+          <ThreatIntelCard threatIntel={record} domainName={record.domain} />
+        ) : null}
+
+        {topThreats.length > 0 && !isLoading ? (
+          <section className="glass-panel threat-table-panel">
+            <div className="threat-table-header">
+              <div>
+                <span className="section-kicker">Observed targets</span>
+                <h3>Top threat targets in the live dataset</h3>
+              </div>
+              <span className="section-badge">Updated continuously</span>
+            </div>
             <div className="table-responsive">
-              <table className="table table-dark table-hover align-middle mb-0" style={{ '--bs-table-bg': 'transparent', '--bs-table-hover-bg': 'var(--color-surface-hover)' }}>
+              <table className="threat-table">
                 <thead>
-                  <tr className="text-muted text-uppercase tracking-wider fs-8 border-bottom border-secondary border-opacity-15">
-                    <th className="ps-4 py-3">Domain Name</th>
-                    <th className="py-3">Average Risk</th>
-                    <th className="py-3">Highest Risk</th>
-                    <th className="py-3">Scans Run</th>
-                    <th className="py-3">Reputation Profile</th>
-                    <th className="pe-4 py-3 text-end">Last Scan Seen</th>
+                  <tr>
+                    <th>Domain</th>
+                    <th>Average Risk</th>
+                    <th>Highest Risk</th>
+                    <th>Scans</th>
+                    <th>Reputation</th>
+                    <th>Last Seen</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {topThreats.map((threat) => (
-                    <tr key={threat.domain} className="border-bottom border-secondary border-opacity-10">
-                      <td className="ps-4 py-3 fw-mono text-info small">{threat.domain}</td>
-                      <td className="py-3 text-light">{threat.average_risk}%</td>
-                      <td className="py-3 text-danger fw-semibold">{threat.highest_risk}%</td>
-                      <td className="py-3 text-muted">{threat.scan_count || 1}</td>
-                      <td className="py-3">
-                        <span className={`badge ${riskBadgeClass(threat.classification || threat.reputation)} px-2.5 py-1.5 rounded-pill fs-9 text-uppercase tracking-wider`}>
-                          {threat.reputation || "Unknown"}
-                        </span>
-                      </td>
-                      <td className="pe-4 py-3 text-end text-muted small">
-                        {formatDateTime(threat.last_seen)}
-                      </td>
-                    </tr>
-                  ))}
+                  {topThreats.map((threat) => {
+                    const reputation = threat.reputation || "Unknown";
+                    const classification = threat.classification || reputation;
+                    return (
+                      <tr key={threat.domain}>
+                        <td className="threat-domain-cell">{threat.domain}</td>
+                        <td>{threat.average_risk}%</td>
+                        <td className="threat-risk-cell">{threat.highest_risk}%</td>
+                        <td>{threat.scan_count || 1}</td>
+                        <td>
+                          <span className={`threat-chip ${riskBadgeClass(classification).replace("text-bg-", "")}`}>
+                            {reputation}
+                          </span>
+                        </td>
+                        <td>{formatDateTime(threat.last_seen)}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
-          </div>
-        </div>
-      ) : null}
+          </section>
+        ) : null}
 
-      {!searched && !isLoading && !record && topThreats.length === 0 ? (
-        <EmptyState
-          icon="bi-search-heart"
-          title="Threat Intel Database Lookup"
-          description="Enter a domain above to query reputation details, or retrieve the list of top threats targets recorded by ScamShield."
-          actionLabel="Load Top Threats"
-          onAction={loadTopThreats}
-        />
-      ) : null}
+        {!searched && !isLoading && !record && topThreats.length === 0 ? (
+          <EmptyState
+            icon="bi-search-heart"
+            title="Threat intelligence workspace"
+            description="Enter a domain above to inspect its reputation profile, or load the live dataset of top threats tracked by ScamShield."
+            actionLabel="Load Top Threats"
+            onAction={loadTopThreats}
+          />
+        ) : null}
+      </div>
     </PageContainer>
   );
 }

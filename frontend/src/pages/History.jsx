@@ -97,41 +97,51 @@ export default function History() {
   }
 
   const hasActiveFilters = Boolean(search || classification);
+  const suspiciousCount = items.filter((scan) => (scan.classification || "").toLowerCase() === "suspicious").length;
+  const maliciousCount = items.filter((scan) => (scan.classification || "").toLowerCase() === "malicious").length;
 
   return (
-    <PageContainer title="Scan History" subtitle="Review, filter, and manage previous URL scans.">
+    <PageContainer title="History & Analytics" subtitle="Review prior detections, filter outcomes, and track your security investigations over time.">
       {error ? <ErrorAlert message={error} onDismiss={() => setError("")} /> : null}
 
-      <div className="card border border-secondary border-opacity-25 bg-dark bg-opacity-70 text-white rounded-4 shadow-sm mb-4">
-        <div className="card-body p-4">
-          <form className="row g-3 align-items-end" onSubmit={submitSearch}>
-            <div className="col-12 col-lg-7">
-              <label htmlFor="history-search" className="form-label text-muted small fw-bold text-uppercase tracking-wider">
-                Search Scans
-              </label>
-              <div className="input-group border border-secondary border-opacity-25 rounded-3 overflow-hidden">
-                <span className="input-group-text bg-transparent border-0 text-muted">
+      <div className="history-shell">
+        <section className="history-stats">
+          <div className="history-stat-card glass-panel">
+            <span className="history-stat-label">Total Scans</span>
+            <strong>{formatCount(pagination.total)}</strong>
+            <small>Recorded investigations</small>
+          </div>
+          <div className="history-stat-card glass-panel">
+            <span className="history-stat-label">Suspicious</span>
+            <strong>{formatCount(suspiciousCount)}</strong>
+            <small>Awaiting review</small>
+          </div>
+          <div className="history-stat-card glass-panel">
+            <span className="history-stat-label">Malicious</span>
+            <strong>{formatCount(maliciousCount)}</strong>
+            <small>High confidence findings</small>
+          </div>
+        </section>
+
+        <section className="glass-panel history-toolbar">
+          <form className="history-toolbar-form" onSubmit={submitSearch}>
+            <div className="history-field">
+              <label htmlFor="history-search">Search scans</label>
+              <div className="history-input-group">
+                <span>
                   <i className="bi bi-search" />
                 </span>
                 <input
                   id="history-search"
-                  className="form-control bg-transparent border-0 text-white"
                   value={searchInput}
                   onChange={(event) => setSearchInput(event.target.value)}
                   placeholder="Search by URL or classification..."
                 />
               </div>
             </div>
-            <div className="col-12 col-md-6 col-lg-3">
-              <label htmlFor="history-filter" className="form-label text-muted small fw-bold text-uppercase tracking-wider">
-                Classification
-              </label>
-              <select
-                id="history-filter"
-                className="form-select bg-dark text-white border-secondary border-opacity-25"
-                value={classification}
-                onChange={updateClassification}
-              >
+            <div className="history-field history-field-small">
+              <label htmlFor="history-filter">Classification</label>
+              <select id="history-filter" value={classification} onChange={updateClassification}>
                 {CLASSIFICATION_OPTIONS.map((option) => (
                   <option key={option || "all"} value={option}>
                     {option || "All classifications"}
@@ -139,112 +149,87 @@ export default function History() {
                 ))}
               </select>
             </div>
-            <div className="col-12 col-md-6 col-lg-2 d-grid">
-              <button className="btn btn-info fw-bold" type="submit" disabled={isLoading}>
-                Search
-              </button>
-            </div>
+            <button className="btn-premium-primary history-action-button" type="submit" disabled={isLoading}>
+              <i className="bi bi-funnel" />
+              Filter
+            </button>
           </form>
-        </div>
-      </div>
+        </section>
 
-      <div className="card border border-secondary border-opacity-25 bg-dark bg-opacity-70 text-white rounded-4 shadow-sm overflow-hidden">
-        <div className="card-header border-bottom border-secondary border-opacity-25 bg-dark bg-opacity-40 p-3 d-flex flex-column flex-md-row gap-2 align-items-md-center justify-content-between">
-          <div className="d-flex align-items-center">
-            <i className="bi bi-clock-history text-info me-2 fs-5" />
-            <h3 className="h6 fw-bold mb-0 text-light text-uppercase tracking-wider">
-              Scan Records
-            </h3>
-          </div>
-          <span className="text-muted small">
-            {formatCount(pagination.total)} result{pagination.total === 1 ? "" : "s"}
-          </span>
-        </div>
-
-        {isLoading ? (
-          <div className="p-5">
-            <LoadingSpinner message="Loading scan history..." />
-          </div>
-        ) : null}
-
-        {!isLoading && items.length > 0 ? (
-          <>
-            <div className="table-responsive">
-              <table
-                className="table table-dark table-hover align-middle mb-0"
-                style={{
-                  "--bs-table-bg": "transparent",
-                  "--bs-table-hover-bg": "var(--color-surface-hover)",
-                }}
-              >
-                <thead>
-                  <tr className="text-muted text-uppercase tracking-wider fs-8 border-bottom border-secondary border-opacity-15">
-                    <th className="ps-4 py-3">URL</th>
-                    <th className="py-3">Risk Score</th>
-                    <th className="py-3">Classification</th>
-                    <th className="py-3">Scan Date</th>
-                    <th className="pe-4 py-3 text-end">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map((scan) => (
-                    <tr key={scan.scan_id} className="border-bottom border-secondary border-opacity-10">
-                      <td
-                        className="ps-4 py-3 text-truncate text-info small fw-semibold"
-                        style={{ maxWidth: "360px", fontFamily: "monospace" }}
-                        title={scan.url}
-                      >
-                        {scan.url || "Unknown URL"}
-                      </td>
-                      <td className="py-3">
-                        <span className={`fw-bold ${scoreClass(scan.risk_score)}`}>
-                          {Number(scan.risk_score || 0)}%
-                        </span>
-                      </td>
-                      <td className="py-3">
-                        <StatusBadge status={scan.classification || "Unknown"} />
-                      </td>
-                      <td className="py-3 text-muted small">{formatDateTime(scan.scan_date)}</td>
-                      <td className="pe-4 py-3 text-end">
-                        <button
-                          className="btn btn-outline-danger btn-sm rounded-pill px-3"
-                          type="button"
-                          onClick={() => handleDelete(scan.scan_id)}
-                          disabled={deletingId === scan.scan_id}
-                        >
-                          {deletingId === scan.scan_id ? (
-                            <>
-                              <span className="spinner-border spinner-border-sm me-2" aria-hidden="true" />
-                              Deleting
-                            </>
-                          ) : (
-                            <>
-                              <i className="bi bi-trash me-1" />
-                              Delete
-                            </>
-                          )}
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+        <section className="glass-panel history-table-card">
+          <div className="history-table-header">
+            <div>
+              <span className="section-kicker">Audit trail</span>
+              <h3>Historical detections</h3>
             </div>
-            <HistoryPagination pagination={pagination} onPageChange={goToPage} />
-          </>
-        ) : null}
+            <span className="section-badge">{formatCount(pagination.total)} results</span>
+          </div>
 
-        {!isLoading && items.length === 0 ? (
-          <EmptyState
-            icon={hasActiveFilters ? "bi-funnel" : "bi-clock-history"}
-            title={hasActiveFilters ? "No Matching Scans" : "No Scan History Yet"}
-            description={
-              hasActiveFilters
-                ? "Adjust the search term or classification filter to find scan records."
-                : "Run a URL scan to populate the production scan history."
-            }
-          />
-        ) : null}
+          {isLoading ? (
+            <div className="history-empty-state">
+              <LoadingSpinner message="Loading analytic history..." />
+            </div>
+          ) : null}
+
+          {!isLoading && items.length > 0 ? (
+            <>
+              <div className="table-responsive">
+                <table className="history-table">
+                  <thead>
+                    <tr>
+                      <th>URL</th>
+                      <th>Risk Score</th>
+                      <th>Classification</th>
+                      <th>Scan Date</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((scan) => (
+                      <tr key={scan.scan_id}>
+                        <td className="history-url-cell" title={scan.url}>
+                          {scan.url || "Unknown URL"}
+                        </td>
+                        <td>
+                          <span className={`history-score ${scoreClass(scan.risk_score)}`}>
+                            {Number(scan.risk_score || 0)}%
+                          </span>
+                        </td>
+                        <td>
+                          <StatusBadge status={scan.classification || "Unknown"} />
+                        </td>
+                        <td>{formatDateTime(scan.scan_date)}</td>
+                        <td>
+                          <button
+                            className="history-delete-button"
+                            type="button"
+                            onClick={() => handleDelete(scan.scan_id)}
+                            disabled={deletingId === scan.scan_id}
+                          >
+                            {deletingId === scan.scan_id ? "Deleting..." : "Delete"}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <HistoryPagination pagination={pagination} onPageChange={goToPage} />
+            </>
+          ) : null}
+
+          {!isLoading && items.length === 0 ? (
+            <EmptyState
+              icon={hasActiveFilters ? "bi-funnel" : "bi-clock-history"}
+              title={hasActiveFilters ? "No Matching Scans" : "No Scan History Yet"}
+              description={
+                hasActiveFilters
+                  ? "Adjust the search term or classification filter to find relevant scan records."
+                  : "Run a URL scan to populate the production history timeline."
+              }
+            />
+          ) : null}
+        </section>
       </div>
     </PageContainer>
   );
@@ -258,7 +243,7 @@ function HistoryPagination({ pagination, onPageChange }) {
   const pages = pageWindow(pagination.page, pagination.total_pages);
 
   return (
-    <div className="d-flex flex-column flex-md-row align-items-center justify-content-between gap-3 p-3 border-top border-secondary border-opacity-25">
+    <div className="history-pagination">
       <div className="text-muted small">
         Page {pagination.page} of {pagination.total_pages}
       </div>
@@ -266,7 +251,7 @@ function HistoryPagination({ pagination, onPageChange }) {
         <ul className="pagination pagination-sm mb-0">
           <li className={`page-item ${pagination.has_prev ? "" : "disabled"}`}>
             <button
-              className="page-link bg-dark text-light border-secondary"
+              className="page-link"
               type="button"
               onClick={() => onPageChange(pagination.page - 1)}
               disabled={!pagination.has_prev}
@@ -276,18 +261,14 @@ function HistoryPagination({ pagination, onPageChange }) {
           </li>
           {pages.map((page) => (
             <li key={page} className={`page-item ${page === pagination.page ? "active" : ""}`}>
-              <button
-                className="page-link border-secondary"
-                type="button"
-                onClick={() => onPageChange(page)}
-              >
+              <button className="page-link" type="button" onClick={() => onPageChange(page)}>
                 {page}
               </button>
             </li>
           ))}
           <li className={`page-item ${pagination.has_next ? "" : "disabled"}`}>
             <button
-              className="page-link bg-dark text-light border-secondary"
+              className="page-link"
               type="button"
               onClick={() => onPageChange(pagination.page + 1)}
               disabled={!pagination.has_next}
@@ -313,7 +294,7 @@ function formatCount(value) {
 
 function scoreClass(score) {
   const value = Number(score || 0);
-  if (value >= 70) return "text-danger";
-  if (value >= 40) return "text-warning";
-  return "text-success";
+  if (value >= 70) return "history-score-danger";
+  if (value >= 40) return "history-score-warning";
+  return "history-score-success";
 }
