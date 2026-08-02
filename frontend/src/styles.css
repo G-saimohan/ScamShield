@@ -87,6 +87,9 @@
 body {
   min-width: 320px;
   min-height: 100vh;
+  line-height: 1.5;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
   background-color: var(--color-bg);
   background-image:
     radial-gradient(circle at 12% 12%, rgba(84, 184, 255, 0.08) 0%, transparent 32%),
@@ -103,6 +106,27 @@ body:has(.app-theme-light) {
 a {
   color: inherit;
   text-decoration: none;
+}
+
+a:hover,
+a:focus-visible {
+  text-decoration: none;
+}
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+a:focus-visible {
+  outline: 2px solid rgba(34, 211, 238, 0.4);
+  outline-offset: 2px;
 }
 
 /* Glassmorphic Panel Base */
@@ -310,7 +334,13 @@ a {
 }
 
 .page-heading {
-  margin-bottom: 32px;
+  margin-bottom: 36px;
+}
+
+.page-heading-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .page-heading h1 {
@@ -324,6 +354,7 @@ a {
   color: var(--text-secondary);
   max-width: 760px;
   margin: 0;
+  font-size: 1.02rem;
 }
 
 /* Home */
@@ -561,7 +592,7 @@ a {
 }
 
 .feature-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-4px) scale(1.01);
   border-color: rgba(34, 211, 238, 0.28);
   box-shadow: 0 22px 56px rgba(2, 8, 23, 0.24);
 }
@@ -1822,16 +1853,134 @@ a {
 }
 
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
+  from { opacity: 0; transform: translateY(12px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.24); }
+  50% { box-shadow: 0 0 0 10px rgba(34, 211, 238, 0); }
 }
 
 .animate-fade-in {
   animation: fadeIn 0.35s cubic-bezier(0.4, 0, 0.2, 1) forwards;
 }
 
+.loading-shell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 24px 12px;
+}
+
+.loading-orb {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 3px solid rgba(34, 211, 238, 0.24);
+  border-top-color: var(--brand);
+  animation: spin 0.9s linear infinite;
+}
+
+.loading-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.loading-copy-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.loading-skeletons {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: min(320px, 100%);
+}
+
+.loading-skeleton {
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.08), rgba(255,255,255,0.2), rgba(255,255,255,0.08));
+  background-size: 200% 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+
+.loading-skeleton-short { width: 65%; }
+.loading-skeleton-medium { width: 85%; }
+.loading-skeleton-long { width: 100%; }
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 36px 24px;
+  text-align: center;
+}
+
+.empty-state-icon {
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(34, 211, 238, 0.12);
+  color: var(--brand);
+  font-size: 1.6rem;
+  animation: pulseGlow 2.4s ease-in-out infinite;
+}
+
+.empty-state h3 {
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  font-weight: 800;
+  margin: 0;
+}
+
+.empty-state p {
+  color: var(--text-secondary);
+  max-width: 360px;
+  margin: 0;
+}
+
+.empty-state-action {
+  margin-top: 6px;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
 @media (max-width: 860px) {
   .app-shell { display: block; }
+  .page-heading { margin-bottom: 28px; }
+  .threat-hero,
+  .about-hero {
+    grid-template-columns: 1fr;
+  }
+  .history-stats,
+  .about-grid {
+    grid-template-columns: 1fr;
+  }
+  .about-card-wide {
+    grid-column: span 1;
+  }
   .sidebar {
     position: fixed;
     top: 0; bottom: 0; left: 0;
@@ -1931,7 +2080,19 @@ a {
   .scanner-context-panel,
   .scanner-loading-panel,
   .scanner-result-card,
-  .scanner-result-header {
+  .scanner-result-header,
+  .glass-panel,
+  .feature-card,
+  .stat-card,
+  .workflow-item,
+  .tech-panel,
+  .threat-hero,
+  .threat-lookup-panel,
+  .threat-table-panel,
+  .history-toolbar,
+  .history-table-card,
+  .about-hero,
+  .about-card {
     border-radius: 18px;
   }
 
@@ -1944,11 +2105,7 @@ a {
     min-height: 190px;
   }
 
-  .hero-console,
-  .feature-card,
-  .stat-card,
-  .workflow-item,
-  .tech-panel {
+  .hero-console {
     border-radius: 18px;
   }
 }

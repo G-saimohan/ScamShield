@@ -6,16 +6,14 @@ export default function EmptyState({
   onAction = null,
 }) {
   return (
-    <div className="d-flex flex-column align-items-center justify-content-center py-5 px-4 text-center rounded-4 border border-dashed border-secondary border-opacity-25 bg-opacity-25 bg-dark">
-      <div className="bg-dark bg-opacity-50 rounded-circle p-4 mb-3 shadow-inner">
-        <i className={`bi ${icon} text-secondary`} style={{ fontSize: "2.5rem" }} />
+    <div className="empty-state glass-panel" role="status" aria-live="polite">
+      <div className="empty-state-icon" aria-hidden="true">
+        <i className={`bi ${icon}`} />
       </div>
-      <h3 className="h5 fw-bold text-light mb-2">{title}</h3>
-      <p className="text-muted small mx-auto mb-3" style={{ maxWidth: "340px" }}>
-        {description}
-      </p>
+      <h3>{title}</h3>
+      <p>{description}</p>
       {actionLabel && onAction ? (
-        <button type="button" className="btn btn-outline-info btn-sm rounded-pill px-4" onClick={onAction}>
+        <button type="button" className="btn-premium-secondary empty-state-action" onClick={onAction}>
           {actionLabel}
         </button>
       ) : null}

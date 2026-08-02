@@ -30,13 +30,14 @@ export default function PublicNavbar() {
           className="nav-menu-button d-lg-none"
           type="button"
           onClick={() => setMenuOpen((current) => !current)}
-          aria-label="Toggle navigation"
+          aria-label={menuOpen ? "Close navigation menu" : "Open navigation menu"}
           aria-expanded={menuOpen}
+          aria-controls="public-nav-links"
         >
           <i className={`bi ${menuOpen ? "bi-x-lg" : "bi-list"}`} />
         </button>
 
-        <div className={`public-nav-links ${menuOpen ? "is-open" : ""}`}>
+        <div id="public-nav-links" className={`public-nav-links ${menuOpen ? "is-open" : ""}`}>
           {navItems.map((item) => (
             <NavLink
               key={item.to}
@@ -58,7 +59,7 @@ export default function PublicNavbar() {
             <i className="bi bi-github me-1" />
             GitHub
           </a>
-          <button className="theme-toggle" type="button" onClick={toggleTheme}>
+          <button className="theme-toggle" type="button" onClick={toggleTheme} aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}>
             <i className={`bi ${theme === "dark" ? "bi-sun" : "bi-moon-stars"}`} />
             <span>{theme === "dark" ? "Light" : "Dark"}</span>
           </button>
