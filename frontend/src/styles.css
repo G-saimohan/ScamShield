@@ -331,6 +331,12 @@ a {
   padding: 104px 0 72px;
 }
 
+.home-page {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .hero-kicker {
   display: inline-flex;
   align-items: center;
@@ -389,7 +395,7 @@ a {
 .hero-console {
   border: 1px solid var(--line);
   border-radius: 24px;
-  background: var(--surface);
+  background: linear-gradient(135deg, rgba(8, 20, 36, 0.95), rgba(13, 28, 50, 0.88));
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.24);
   overflow: hidden;
 }
@@ -527,6 +533,18 @@ a {
     linear-gradient(135deg, rgba(34, 211, 238, 0.42), rgba(99, 102, 241, 0.08), rgba(244, 63, 94, 0.18)) border-box;
   border: 1px solid transparent;
   transition: transform 0.22s ease, background 0.22s ease, box-shadow 0.22s ease;
+  overflow: hidden;
+}
+
+.feature-card::after {
+  content: "";
+  position: absolute;
+  inset: auto -20% -32% auto;
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(34, 211, 238, 0.16), transparent 70%);
+  pointer-events: none;
 }
 
 .feature-card:hover {
@@ -534,6 +552,18 @@ a {
   background: linear-gradient(var(--surface-hover), var(--surface-hover)) padding-box,
     linear-gradient(135deg, rgba(34, 211, 238, 0.62), rgba(99, 102, 241, 0.24), rgba(244, 63, 94, 0.28)) border-box;
   box-shadow: 0 18px 48px rgba(2, 8, 23, 0.24);
+}
+
+.feature-card.coming-soon {
+  opacity: 0.94;
+}
+
+.feature-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 22px;
 }
 
 .feature-icon {
@@ -546,7 +576,6 @@ a {
   border: 1px solid var(--line-strong);
   border-radius: 14px;
   font-size: 1.25rem;
-  margin-bottom: 24px;
 }
 
 .feature-card h3 {

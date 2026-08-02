@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import FeatureCard from "../components/FeatureCard.jsx";
 
 const features = [
   {
@@ -10,26 +11,31 @@ const features = [
     title: "Email Detection",
     icon: "bi-envelope-shield",
     description: "Analyze phishing emails for urgency cues, credential traps, and impersonation.",
+    comingSoon: true,
   },
   {
     title: "SMS Detection",
     icon: "bi-chat-left-dots",
     description: "Flag scam messages, payment fraud, OTP theft attempts, and social engineering.",
+    comingSoon: true,
   },
   {
     title: "Fake News Detection",
     icon: "bi-newspaper",
     description: "Evaluate suspicious claims, viral posts, and manipulative text patterns.",
+    comingSoon: true,
   },
   {
     title: "AI Image Detection",
     icon: "bi-image",
     description: "Review generated images, edited documents, and visual authenticity signals.",
+    comingSoon: true,
   },
   {
     title: "Deepfake Video Detection",
     icon: "bi-camera-video",
     description: "Assess synthetic media indicators across video and audio forensic signals.",
+    comingSoon: true,
   },
 ];
 
@@ -123,13 +129,7 @@ export default function Home() {
           <div className="row g-4">
             {features.map((feature) => (
               <div key={feature.title} className="col-12 col-md-6 col-xl-4">
-                <article className="feature-card">
-                  <div className="feature-icon">
-                    <i className={`bi ${feature.icon}`} />
-                  </div>
-                  <h3>{feature.title}</h3>
-                  <p>{feature.description}</p>
-                </article>
+                <FeatureCard {...feature} />
               </div>
             ))}
           </div>
