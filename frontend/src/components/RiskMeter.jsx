@@ -27,11 +27,11 @@ export default function RiskMeter({ score = 0, classification = "Safe" }) {
 
   // Color selection based on the score
   const getColor = (s) => {
-    if (s >= 85) return "#dc3545"; // Malicious (Red)
-    if (s >= 65) return "#fd7e14"; // High (Orange)
-    if (s >= 40) return "#ffc107"; // Medium (Yellow/Orange)
-    if (s >= 20) return "#0dcaf0"; // Low (Cyan/Blue)
-    return "#198754"; // Safe (Green)
+    if (s >= 85) return "var(--color-risk-critical)";
+    if (s >= 65) return "var(--color-risk-high)";
+    if (s >= 40) return "var(--color-risk-medium)";
+    if (s >= 20) return "var(--color-risk-low)";
+    return "var(--color-risk-safe)";
   };
 
   const getTextColorClass = (s) => {

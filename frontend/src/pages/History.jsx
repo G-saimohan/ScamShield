@@ -174,7 +174,7 @@ export default function History() {
                 className="table table-dark table-hover align-middle mb-0"
                 style={{
                   "--bs-table-bg": "transparent",
-                  "--bs-table-hover-bg": "rgba(255, 255, 255, 0.03)",
+                  "--bs-table-hover-bg": "var(--color-surface-hover)",
                 }}
               >
                 <thead>

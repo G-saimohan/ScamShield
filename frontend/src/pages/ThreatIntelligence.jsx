@@ -111,7 +111,7 @@ export default function ThreatIntelligence() {
           </div>
           <div className="card-body p-0">
             <div className="table-responsive">
-              <table className="table table-dark table-hover align-middle mb-0" style={{ '--bs-table-bg': 'transparent', '--bs-table-hover-bg': 'rgba(255, 255, 255, 0.03)' }}>
+              <table className="table table-dark table-hover align-middle mb-0" style={{ '--bs-table-bg': 'transparent', '--bs-table-hover-bg': 'var(--color-surface-hover)' }}>
                 <thead>
                   <tr className="text-muted text-uppercase tracking-wider fs-8 border-bottom border-secondary border-opacity-15">
                     <th className="ps-4 py-3">Domain Name</th>
