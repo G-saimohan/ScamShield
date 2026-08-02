@@ -72,6 +72,20 @@ class UserRepository(GenericMongoRepository):
             handle_repository_error(error)
 
     @classmethod
+    def update_password(cls, user_id: str, password_hash: str) -> None:
+        """Update a user's stored password hash."""
+        try:
+            now = utc_now()
+            get_collection(cls.collection_name).update_one(
+                {"user_id": user_id},
+                {"$set": {"password_hash": password_hash, "updated_at": now}},
+            )
+            current_app.logger.info("user_password_updated user_id=%s", user_id)
+        except Exception as error:
+            current_app.logger.exception("user_password_update_failed")
+            handle_repository_error(error)
+
+    @classmethod
     def _find_one(cls, filter_query: dict) -> dict | None:
         """Return one user document matching the filter."""
         try:

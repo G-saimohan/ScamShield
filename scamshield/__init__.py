@@ -6,6 +6,7 @@ from flask import Flask
 
 from scamshield.config import Config
 from scamshield.extensions import cors
+from scamshield.middleware.api_rate_limiting import register_api_rate_limiting
 from scamshield.middleware.request_logging import register_request_logging
 from scamshield.repositories.database import init_db
 from scamshield.routes import register_blueprints
@@ -25,6 +26,8 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     app.config["FRONTEND_DIST_DIR"] = str(frontend_dist)
 
     configure_logging(app)
+    for warning in config_class.validate():
+        app.logger.warning("insecure_config_warning message=%r", warning)
     app.logger.info(
         "env_loaded mongodb_uri_configured=%s mongodb_host=%s database=%s "
         "debug=%s cors_origins=%s strict=%s",
@@ -46,6 +49,7 @@ def create_app(config_class: type[Config] = Config) -> Flask:
     register_blueprints(app)
     register_error_handlers(app)
     register_request_logging(app)
+    register_api_rate_limiting(app)
 
     app.logger.info("ScamShield application startup complete")
     return app

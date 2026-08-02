@@ -42,7 +42,7 @@ The running application uses explainable, rule-based risk scoring:
 ## Tech Stack
 
 - **Backend:** Python, Flask, Flask-CORS
-- **Frontend:** HTML, CSS, JavaScript, Chart.js
+- **Frontend:** React, React Router, Bootstrap, Vite
 - **Database:** MongoDB Atlas with PyMongo
 - **Media analysis:** Pillow
 - **Machine learning:** pandas, NumPy, SciPy, scikit-learn, joblib
@@ -59,7 +59,7 @@ The running application uses explainable, rule-based risk scoring:
 ### Installation
 
 ```bash
-git clone https://github.com/gollesaimohan-source/ScamShield.git
+git clone https://github.com/GOLLE-SAIMOHAN/ScamShield.git
 cd ScamShield
 python -m venv .venv
 ```
@@ -107,6 +107,36 @@ Open [http://127.0.0.1:5000](http://127.0.0.1:5000) in your browser.
 
 The application connects to MongoDB Atlas when `MONGODB_URI` is configured and adds a small set of sample reports when the reports collection is empty. If no MongoDB URI is provided, the app uses an in-memory development fallback so local frontend/API work can still run.
 
+### Frontend
+
+[#frontend](#frontend)
+
+The dashboard is a React app (Vite + React Router + Bootstrap) that lives in `frontend/`. Its production build (`frontend/dist`) is **not committed to git** and must be generated locally or by your deployment pipeline.
+
+To build it once and let Flask serve the static bundle:
+
+```bash
+cd frontend
+npm ci
+npm run build
+cd ..
+python app.py
+```
+
+Open [http://127.0.0.1:5000](http://127.0.0.1:5000) — Flask serves the built React app directly.
+
+For active frontend development with hot reload instead, run the Vite dev server against the Flask API:
+
+```bash
+cd frontend
+npm ci
+npm run dev
+```
+
+This serves the frontend on a separate port (typically `http://localhost:5173`) and proxies API calls to the Flask backend. Set `VITE_API_BASE_URL` in a `frontend/.env` file if the backend isn't running on `http://127.0.0.1:5000`, and add that dev origin to `CORS_ORIGINS` on the backend.
+
+If you run `python app.py` before building the frontend, `/` responds with a `503` and a hint to build it — this is expected, not a bug.
+
 ### Configuration
 
 ScamShield reads runtime configuration from environment variables. Copy `.env.example` to `.env` when you add a dotenv loader or configure these values directly in your shell/deployment platform.
@@ -123,10 +153,16 @@ ScamShield reads runtime configuration from environment variables. Copy `.env.ex
 | `JWT_SECRET_KEY` | `SECRET_KEY` value | HS256 JWT signing key |
 | `JWT_EXPIRATION_MINUTES` | `60` | Access token lifetime |
 | `BCRYPT_ROUNDS` | `12` | bcrypt password hashing cost |
+| `JWT_REFRESH_EXPIRATION_DAYS` | `30` | Refresh token lifetime |
+| `API_RATE_LIMIT_MAX_REQUESTS` | `30` | Max requests per client IP per window across `/api/*` (except `/api/health`) |
+| `API_RATE_LIMIT_WINDOW_SECONDS` | `60` | Rolling window size for the general API rate limiter |
+| `PASSWORD_RESET_TOKEN_EXPIRATION_MINUTES` | `30` | Password reset token lifetime |
 | `SCAMSHIELD_DEMO_EMAIL` | `demo@scamshield.com` | Demo login email |
 | `SCAMSHIELD_DEMO_PASSWORD` | `scamshield123` | Demo login password |
 
 Legacy `SCAMSHIELD_SECRET_KEY`, `SCAMSHIELD_CORS_ORIGINS`, and `FLASK_DEBUG` values are still supported for backward compatibility.
+
+**Production safety check:** on startup, if `DEBUG` is not enabled and `SECRET_KEY` or `JWT_SECRET_KEY` are left at their insecure built-in defaults, the app refuses to start rather than silently running with guessable secrets. Always set both explicitly outside local development.
 
 ### MongoDB Collections
 
@@ -196,10 +232,13 @@ Generated `.pkl` files are ignored by Git.
 | `GET` | `/api/auth-status` | Return current session authentication state |
 | `POST` | `/api/login` | Sign in with demo analyst credentials |
 | `POST` | `/api/logout` | Clear the active session |
-| `POST` | `/api/auth/register` | Register a user and return a JWT access token |
-| `POST` | `/api/auth/login` | Login with email/password and return a JWT access token |
+| `POST` | `/api/auth/register` | Register a user and return a JWT access + refresh token pair |
+| `POST` | `/api/auth/login` | Login with email/password and return a JWT access + refresh token pair |
+| `POST` | `/api/auth/refresh` | Exchange a valid refresh token for a new access token |
+| `POST` | `/api/auth/password-reset/request` | Request a password reset link for an email (always returns a generic success message) |
+| `POST` | `/api/auth/password-reset/confirm` | Confirm a password reset with a token and new password |
 | `GET` | `/api/auth/me` | Return the current JWT-authenticated user |
-| `POST` | `/api/auth/logout` | Acknowledge client-side JWT logout |
+| `POST` | `/api/auth/logout` | Revoke the presented access token server-side |
 | `POST` | `/api/analyze` | Analyze message or transcript content |
 | `POST` | `/api/check-url` | Inspect a URL for phishing indicators |
 | `POST` | `/check-url` | Backward-compatible URL inspection endpoint |

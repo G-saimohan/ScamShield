@@ -20,7 +20,7 @@ services:
       - key: DEBUG
         value: "False"
       - key: CORS_ORIGINS
-        value: "*"
+        value: "https://phishing-url-xjgv.onrender.com"
       - key: MONGODB_STRICT
         value: "True"
       - key: MONGODB_TIMEOUT_MS

@@ -8,10 +8,10 @@ import ErrorAlert from "../components/ErrorAlert.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 
 const TABS = [
-  { id: "url", label: "URL & Web Scanner", icon: "bi-globe2" },
-  { id: "text", label: "Text, Email & Fake News", icon: "bi-card-heading" },
-  { id: "image", label: "AI Image & Deepfake", icon: "bi-image" },
-  { id: "video", label: "Video & Audio Forensics", icon: "bi-camera-video" },
+  { id: "url", label: "URL & Website Scanner", icon: "bi-globe2" },
+  { id: "text", label: "Message, Email & News", icon: "bi-card-heading" },
+  { id: "image", label: "Image & Deepfake Analysis", icon: "bi-image" },
+  { id: "video", label: "Video & Audio Analysis", icon: "bi-camera-video" },
 ];
 
 const SAMPLES = {
@@ -183,8 +183,8 @@ export default function Scanner() {
 
   return (
     <PageContainer
-      title="Multi-Modal Threat & Deepfake Scanner"
-      subtitle="AI-powered analysis engine for URLs, Fake News, Scam Emails, AI Image Deepfakes & Audio-Video Media."
+      title="ScamShield Threat Scanner"
+      subtitle="AI-powered analysis for suspicious URLs, scam messages, fake news, and manipulated media."
     >
       {/* ── Scanner Hub Tabs ───────────────────────────────────── */}
       <div className="scanner-tabs">
@@ -208,7 +208,7 @@ export default function Scanner() {
           {activeTab === "url" && (
             <div>
               <label htmlFor="scan-url-input" className="form-label small text-muted text-uppercase tracking-wider fw-bold">
-                Target URL or Domain Inspection
+                Inspect a URL or Domain
               </label>
               <div className="input-group input-group-lg border border-info border-opacity-25 rounded-3 bg-dark bg-opacity-60 overflow-hidden">
                 <span className="input-group-text bg-transparent border-0 text-info">
@@ -232,7 +232,7 @@ export default function Scanner() {
             <div>
               <div className="d-flex align-items-center justify-content-between mb-2">
                 <label htmlFor="scan-text-input" className="form-label small text-muted text-uppercase tracking-wider fw-bold mb-0">
-                  Paste SMS, Email, Fake News or Message Content
+                  Paste SMS, Email, or Fake News Content
                 </label>
                 <select
                   className="form-select form-select-sm bg-dark border-secondary border-opacity-25 text-info w-auto fs-8 rounded-2 fw-semibold"
@@ -251,7 +251,7 @@ export default function Scanner() {
                 rows={4}
                 value={textInput}
                 onChange={(e) => setTextInput(e.target.value)}
-                placeholder="Paste suspicious text message, email content, or news snippet here..."
+                placeholder="Paste a suspicious message, email, or news snippet here..."
                 disabled={isScanning}
               />
             </div>
@@ -321,7 +321,7 @@ export default function Scanner() {
               ) : (
                 <>
                   <i className="bi bi-cpu-fill" />
-                  <span>Run Deep AI Scan</span>
+                  <span>Run ScamShield Scan</span>
                 </>
               )}
             </button>

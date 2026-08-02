@@ -10,6 +10,8 @@ from scamshield.services.auth_service import (
 )
 from scamshield.validators.auth_validator import (
     validate_login_payload,
+    validate_password_reset_confirm_payload,
+    validate_password_reset_request_payload,
     validate_registration_payload,
 )
 
@@ -72,8 +74,44 @@ def current_user():
 
 
 def logout_user():
-    """Acknowledge stateless JWT logout."""
-    return jsonify(AuthService.logout_token())
+    """Revoke the presented JWT access token."""
+    auth_header = request.headers.get("Authorization", "")
+    token = auth_header.removeprefix("Bearer ").strip()
+    return jsonify(AuthService.logout_token(token))
+
+
+def refresh_token():
+    """Exchange a refresh token for a new access token."""
+    payload = request.get_json(silent=True) or {}
+    token = (payload.get("refresh_token") or "").strip()
+    if not token:
+        return (
+            jsonify(
+                {"success": False, "error": "refresh_token is required", "details": {}}
+            ),
+            400,
+        )
+    try:
+        return jsonify(AuthService.refresh(token))
+    except AuthenticationError as error:
+        return jsonify({"success": False, "error": str(error), "details": {}}), 401
+
+
+def request_password_reset():
+    """Request a password reset link for an email address."""
+    payload = validate_password_reset_request_payload(request.get_json(silent=True) or {})
+    return jsonify(AuthService.request_password_reset(payload["email"]))
+
+
+def confirm_password_reset():
+    """Confirm a password reset using a token and new password."""
+    payload = validate_password_reset_confirm_payload(request.get_json(silent=True) or {})
+    try:
+        return jsonify(
+            AuthService.confirm_password_reset(payload["token"], payload["new_password"])
+        )
+    except AuthenticationError as error:
+        return jsonify({"success": False, "error": str(error), "details": {}}), 401
 
 
 def admin_check():
