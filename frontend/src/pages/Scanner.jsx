@@ -1,8 +1,10 @@
 import { useMemo, useState } from "react";
 import PageContainer from "../layouts/PageContainer.jsx";
-import ScannerTypeCard from "../components/ScannerTypeCard.jsx";
-import ScannerResultReport from "../components/ScannerResultReport.jsx";
-import LoadingSpinner from "../components/LoadingSpinner.jsx";
+import ScannerHero from "../components/ScannerHero.jsx";
+import DetectionSelector from "../components/DetectionSelector.jsx";
+import ScannerInput from "../components/ScannerInput.jsx";
+import ScannerResult from "../components/ScannerResult.jsx";
+import LoadingState from "../components/LoadingState.jsx";
 import ErrorAlert from "../components/ErrorAlert.jsx";
 import EmptyState from "../components/EmptyState.jsx";
 import { analyzeContent, scanUrl } from "../services/scanService.js";
@@ -160,112 +162,24 @@ export default function Scanner() {
       subtitle="Analyze URLs, Emails, SMS messages, News Articles, Images, and Videos using AI."
     >
       <div className="scanner-shell">
-        <section className="scanner-type-grid" aria-label="Scan type">
-          {SCAN_TYPES.map((type) => (
-            <ScannerTypeCard
-              key={type.id}
-              type={type}
-              isActive={activeTypeId === type.id}
-              onSelect={selectType}
-            />
-          ))}
-        </section>
+        <ScannerHero />
+
+        <DetectionSelector types={SCAN_TYPES} activeTypeId={activeTypeId} onSelect={selectType} />
 
         <section className="scanner-workspace">
-          <div className="scanner-input-panel">
-            <div className="scanner-panel-heading">
-              <div>
-                <span className="scanner-eyebrow">Selected module</span>
-                <h2>{activeType.label} Analysis</h2>
-              </div>
-              {activeType.comingSoon ? <span className="coming-soon-pill">Coming Soon</span> : null}
-            </div>
+          <ScannerInput
+            activeType={activeType}
+            value={activeTypeId === "url" ? inputs.url : inputs[activeTypeId] || ""}
+            onChange={updateInput}
+            onFileChange={handleFileChange}
+            selectedFile={selectedFile}
+            isScanning={isScanning}
+            onLoadSample={loadSample}
+            onSubmit={handleSubmit}
+            onReset={resetScanner}
+          />
 
-            <form onSubmit={handleSubmit}>
-              {activeTypeId === "url" ? (
-                <div className="scanner-field">
-                  <label htmlFor="scanner-url">{activeType.inputLabel}</label>
-                  <div className="scanner-url-input">
-                    <i className="bi bi-link-45deg" />
-                    <input
-                      id="scanner-url"
-                      type="text"
-                      value={inputs.url}
-                      onChange={(event) => updateInput(event.target.value)}
-                      placeholder={activeType.placeholder}
-                      disabled={isScanning}
-                    />
-                  </div>
-                </div>
-              ) : null}
-
-              {["email", "sms", "news"].includes(activeTypeId) ? (
-                <div className="scanner-field">
-                  <label htmlFor="scanner-text">{activeType.inputLabel}</label>
-                  <textarea
-                    id="scanner-text"
-                    value={inputs[activeTypeId]}
-                    onChange={(event) => updateInput(event.target.value)}
-                    placeholder={activeType.placeholder}
-                    rows={8}
-                    disabled={isScanning}
-                  />
-                </div>
-              ) : null}
-
-              {["image", "video"].includes(activeTypeId) ? (
-                <div className="scanner-field">
-                  <label>{activeType.inputLabel}</label>
-                  <div className="scanner-dropzone">
-                    <input
-                      id="scanner-file"
-                      type="file"
-                      accept={activeTypeId === "image" ? "image/*" : "video/*"}
-                      onChange={handleFileChange}
-                      disabled
-                    />
-                    <i className={`bi ${activeTypeId === "image" ? "bi-cloud-upload" : "bi-film"}`} />
-                    <strong>{selectedFile?.name || `${activeType.label} scanning is coming soon`}</strong>
-                    <span>
-                      This module will be enabled when production media analysis is available.
-                    </span>
-                  </div>
-                </div>
-              ) : null}
-
-              {!activeType.comingSoon && SAMPLE_INPUTS[activeTypeId] ? (
-                <button className="scanner-sample-button" type="button" onClick={loadSample}>
-                  <i className="bi bi-magic" />
-                  Use sample
-                </button>
-              ) : null}
-
-              <div className="scanner-actions">
-                <button
-                  className="btn-premium-primary"
-                  type="submit"
-                  disabled={isScanning || activeType.comingSoon}
-                >
-                  {isScanning ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm" aria-hidden="true" />
-                      Analyzing
-                    </>
-                  ) : (
-                    <>
-                      Run AI Scan
-                      <i className="bi bi-arrow-right" />
-                    </>
-                  )}
-                </button>
-                <button className="btn-premium-secondary" type="button" onClick={resetScanner}>
-                  Reset
-                </button>
-              </div>
-            </form>
-          </div>
-
-          <aside className="scanner-context-panel">
+          <aside className="scanner-context-panel glass-panel">
             <span className="scanner-eyebrow">Detection profile</span>
             <h3>{activeType.label}</h3>
             <p>{activeType.description}</p>
@@ -288,14 +202,7 @@ export default function Scanner() {
 
         {error ? <ErrorAlert message={error} onDismiss={() => setError("")} /> : null}
 
-        {isScanning ? (
-          <div className="scanner-loading-panel">
-            <div className="radar-hud">
-              <i className="bi bi-shield-shaded text-info fs-3" />
-            </div>
-            <LoadingSpinner message="Analyzing threat indicators and preparing explainable report..." />
-          </div>
-        ) : null}
+        {isScanning ? <LoadingState message="Analyzing threat indicators and preparing explainable report..." /> : null}
 
         {!result && !isScanning && !error ? (
           <EmptyState
@@ -305,7 +212,7 @@ export default function Scanner() {
           />
         ) : null}
 
-        <ScannerResultReport result={result} />
+        <ScannerResult result={result} />
       </div>
     </PageContainer>
   );
