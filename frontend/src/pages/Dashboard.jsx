@@ -26,28 +26,28 @@ const MODULE_CARDS = [
     title: "URL & Web Scanner",
     desc: "Inspect suspicious domains, short links, and phishing portals.",
     icon: "bi-globe2",
-    color: "#00f2fe",
+    color: "var(--color-accent)",
   },
   {
     id: "text",
     title: "Text & Fake News",
     desc: "Detect scam SMS, phishing emails, and fake news articles.",
     icon: "bi-card-heading",
-    color: "#4facfe",
+    color: "var(--color-info)",
   },
   {
     id: "image",
     title: "AI Image & Deepfake",
     desc: "Analyze photos, AI generator signatures, and metadata.",
     icon: "bi-image",
-    color: "#7928ca",
+    color: "var(--color-secondary)",
   },
   {
     id: "video",
     title: "Video & Audio Forensics",
     desc: "Evaluate deepfake video anchors and synthetic voice clips.",
     icon: "bi-camera-video",
-    color: "#ff0080",
+    color: "var(--color-danger)",
   },
 ];
 
