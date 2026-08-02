@@ -7,10 +7,14 @@ from flask import abort, current_app, jsonify, send_from_directory
 
 def index(path: str = ""):
     """Render the ScamShield dashboard."""
+    dist_dir = current_app.config["FRONTEND_DIST_DIR"]
     if path.startswith("api/") or path.startswith("src/") or "." in path:
         abort(404)
 
-    dist_dir = current_app.config["FRONTEND_DIST_DIR"]
+    if path.startswith("assets/"):
+        asset_path = path[len("assets/"):]
+        return send_from_directory(os.path.join(dist_dir, "assets"), asset_path)
+
     if not os.path.exists(os.path.join(dist_dir, "index.html")):
         return (
             jsonify(

@@ -1,0 +1,17 @@
+[build-system]
+requires = ["setuptools>=65.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "scamshield"
+version = "0.1.0"
+description = "ScamShield fraud detection and phishing analysis web application"
+authors = [
+  { name = "ScamShield Team" }
+]
+readme = "README.md"
+requires-python = ">=3.11"
+packages = ["scamshield"]
+
+[project.urls]
+"Homepage" = "https://github.com/your-org/ScamShield"
