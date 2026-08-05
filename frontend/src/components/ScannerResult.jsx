@@ -43,7 +43,29 @@ export default function ScannerResult({ result }) {
         </div>
       </div>
 
-      {result.threat_intelligence ? (
+      {result.file_details || result.media_type ? (
+        <div className="scanner-result-card glass-panel mt-4">
+          <div className="result-section">
+            <span className="scanner-eyebrow">Media Details</span>
+            <div className="media-metadata">
+              {result.media_type ? <p><strong>Type:</strong> {result.media_type}</p> : null}
+              {result.file_details ? (
+                <>
+                  <p><strong>File:</strong> {result.file_details.name}</p>
+                  <p><strong>Size:</strong> {formatBytes(result.file_details.size_bytes)}</p>
+                  <p><strong>Content type:</strong> {result.file_details.content_type}</p>
+                </>
+              ) : null}
+              {result.duration_seconds ? (
+                <p><strong>Duration:</strong> {result.duration_seconds}s</p>
+              ) : null}
+              {result.forensic_metrics ? (
+                <p><strong>Forensic score:</strong> {result.forensic_metrics?.entropy ?? "N/A"}</p>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      ) : result.threat_intelligence ? (
         <div className="mt-4">
           <ThreatIntelCard threatIntel={result.threat_intelligence} domainName={result.domain} />
         </div>
@@ -90,4 +112,16 @@ function normalizeStatus(value = "") {
 function formatConfidence(value) {
   if (value === undefined || value === null || value === "") return "N/A";
   return `${value}%`;
+}
+
+function formatBytes(bytes) {
+  if (!bytes || bytes < 0) return "0 B";
+  const units = ["B", "KB", "MB", "GB"];
+  let size = bytes;
+  let index = 0;
+  while (size >= 1024 && index < units.length - 1) {
+    size /= 1024;
+    index += 1;
+  }
+  return `${size.toFixed(1)} ${units[index]}`;
 }

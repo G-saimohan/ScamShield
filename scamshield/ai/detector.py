@@ -48,6 +48,21 @@ BRANDS = {
     "amazon", "flipkart", "whatsapp", "telegram", "microsoft", "google",
 }
 
+EMAIL_TERMS = {
+    "dear customer", "account suspended", "verify your account", "click here",
+    "security alert", "unauthorized login", "reset your password", "login to your account",
+}
+
+SMS_TERMS = {
+    "delivery", "package", "customs", "otp", "upi", "bank update", "payment due",
+    "failed transaction", "last chance", "confirm now", "one-time password",
+}
+
+NEWS_TERMS = {
+    "breaking", "exclusive", "viral", "official statement", "claim", "fact check",
+    "conspiracy", "shocking", "urgent update", "unconfirmed", "must read",
+}
+
 
 def _contains_any(text, terms):
     lowered = text.lower()
@@ -156,14 +171,46 @@ def analyze_content(content, content_type="message"):
             "matches": ["6-digit code"],
         })
 
+    if content_type == "email":
+        email_signals = _contains_any(text, EMAIL_TERMS)
+        if email_signals:
+            score += min(22, len(email_signals) * 7)
+            indicators.append({
+                "name": "Email phishing style",
+                "detail": "The message contains email scam phrases like account suspension or password reset.",
+                "matches": email_signals[:5],
+            })
+    elif content_type == "sms":
+        sms_signals = _contains_any(text, SMS_TERMS)
+        if sms_signals:
+            score += min(22, len(sms_signals) * 7)
+            indicators.append({
+                "name": "SMS scam style",
+                "detail": "The message contains SMS scam language such as delivery, customs, or payment prompts.",
+                "matches": sms_signals[:5],
+            })
+    elif content_type == "news":
+        news_signals = _contains_any(text, NEWS_TERMS)
+        if news_signals:
+            score += min(20, len(news_signals) * 6)
+            indicators.append({
+                "name": "Fake news style",
+                "detail": "The text uses viral or sensational language common in misinformation.",
+                "matches": news_signals[:5],
+            })
+
     scam_probability = min(100, score)
     risk_level = _risk_label(scam_probability)
+    classification = _build_text_classification(content_type, scam_probability)
+    confidence = _build_text_confidence(scam_probability)
 
     return {
         "content_type": content_type,
+        "classification": classification,
         "scam_probability": scam_probability,
         "risk_level": risk_level,
-        "summary": _build_summary(risk_level, indicators),
+        "confidence": confidence,
+        "summary": _build_summary(content_type, risk_level, indicators),
         "indicators": indicators or [{
             "name": "No strong scam pattern",
             "detail": (
@@ -178,12 +225,64 @@ def analyze_content(content, content_type="message"):
     }
 
 
-def _build_summary(risk_level, indicators):
+def _build_summary(content_type, risk_level, indicators):
     if not indicators:
         return "No major scam indicators were detected in this content."
 
+    context_phrase = {
+        "email": "email",
+        "sms": "SMS",
+        "news": "news",
+    }.get(content_type, "message")
+
     names = ", ".join(item["name"].lower() for item in indicators[:3])
-    return f"{risk_level} risk: this content shows {names}."
+    return f"{risk_level} risk: this {context_phrase} contains {names}."
+
+
+def _build_text_classification(content_type, score):
+    if content_type == "email":
+        if score >= 55:
+            return "Email Scam"
+        if score >= 35:
+            return "Suspicious Email"
+        return "Likely Legitimate Email"
+    if content_type == "sms":
+        if score >= 55:
+            return "SMS Scam"
+        if score >= 35:
+            return "Suspicious SMS"
+        return "Likely Legitimate SMS"
+    if content_type == "news":
+        if score >= 55:
+            return "Fake News"
+        if score >= 35:
+            return "Potential Misinformation"
+        return "Likely Legitimate News"
+    if score >= 55:
+        return "Suspicious Content"
+    if score >= 35:
+        return "Potential Scam"
+    return "Low Risk Content"
+
+
+def _build_text_confidence(score):
+    if score >= 80:
+        return 92
+    if score >= 60:
+        return 78
+    if score >= 40:
+        return 62
+    return 48
+
+
+def _build_url_confidence(risk_score, trust_score):
+    if risk_score >= 70:
+        return 81
+    if risk_score >= 50:
+        return 68
+    if trust_score >= 70:
+        return 86
+    return 55
 
 
 def analyze_url(url):
@@ -237,6 +336,7 @@ def analyze_url(url):
 
     risk_score = min(100, score)
     trust_score = max(0, 100 - risk_score)
+    confidence = _build_url_confidence(risk_score, trust_score)
 
     return {
         "url": raw_url,
@@ -244,6 +344,7 @@ def analyze_url(url):
         "risk_score": risk_score,
         "trust_score": trust_score,
         "risk_level": _risk_label(risk_score),
+        "confidence": confidence,
         "danger_indicators": indicators or ["No major URL danger indicators found"],
         "explanation": _explain_url(risk_score, indicators),
         "recommended_action": _recommended_action(risk_score),

@@ -95,6 +95,7 @@ class ScanService:
     def analyze_content(content: str, content_type: str) -> dict:
         """Analyze text content and persist scan history."""
         result = analyze_content(content, content_type)
+        result["threat_summary"] = ExplanationService().explain(result, {})
         HistoryRepository.add_history(
             content_type.title(),
             content[:90],
@@ -126,6 +127,7 @@ class ScanService:
             "File upload is enabled. Add Tesseract OCR for screenshot text extraction "
             "and Whisper/OpenAI speech-to-text for automatic audio transcription."
         )
+        result["threat_summary"] = ExplanationService().explain(result, {})
 
         HistoryRepository.add_history(
             normalized_type.title(),

@@ -7,7 +7,7 @@ import ScannerResult from "../components/ScannerResult.jsx";
 import LoadingState from "../components/LoadingState.jsx";
 import ErrorAlert from "../components/ErrorAlert.jsx";
 import EmptyState from "../components/EmptyState.jsx";
-import { analyzeContent, scanUrl } from "../services/scanService.js";
+import { analyzeContent, analyzeMedia, scanUrl } from "../services/scanService.js";
 
 const SCAN_TYPES = [
   {
@@ -47,18 +47,16 @@ const SCAN_TYPES = [
     label: "AI Image",
     icon: "bi-image",
     description: "Generated images and manipulated visuals",
-    inputLabel: "Image Upload",
+    inputLabel: "Upload an image file",
     placeholder: "",
-    comingSoon: true,
   },
   {
     id: "video",
     label: "Deepfake Video",
     icon: "bi-camera-video",
     description: "Synthetic video and manipulated media",
-    inputLabel: "Video Upload",
+    inputLabel: "Upload a video file",
     placeholder: "",
-    comingSoon: true,
   },
 ];
 
@@ -122,25 +120,34 @@ export default function Scanner() {
     setError("");
     setResult(null);
 
-    if (activeType.comingSoon) {
-      setError(`${activeType.label} scanning is coming soon.`);
-      return;
-    }
-
-    const value = inputs[activeTypeId]?.trim();
-    if (!value) {
-      setError(`Please enter ${activeType.inputLabel.toLowerCase()} to analyze.`);
-      return;
+    if (activeTypeId === "image" || activeTypeId === "video") {
+      if (!selectedFile) {
+        setError(`Please upload a ${activeType.label.toLowerCase()} before scanning.`);
+        return;
+      }
+    } else {
+      const value = inputs[activeTypeId]?.trim();
+      if (!value) {
+        setError(`Please enter ${activeType.inputLabel.toLowerCase()} to analyze.`);
+        return;
+      }
     }
 
     setIsScanning(true);
     try {
       if (activeTypeId === "url") {
-        const response = await scanUrl(value);
-        setResult(normalizeUrlResult(response, value));
+        const response = await scanUrl(inputs.url.trim());
+        setResult(normalizeUrlResult(response, inputs.url.trim()));
+      } else if (activeTypeId === "image" || activeTypeId === "video") {
+        const metadata = await loadMediaMetadata(selectedFile);
+        const response = await analyzeMedia(selectedFile, metadata);
+        setResult(normalizeMediaResult(response, selectedFile));
       } else {
-        const response = await analyzeContent(value, contentTypeFor(activeTypeId));
-        setResult(normalizeTextResult(response, value, activeTypeId));
+        const response = await analyzeContent(
+          inputs[activeTypeId].trim(),
+          contentTypeFor(activeTypeId),
+        );
+        setResult(normalizeTextResult(response, inputs[activeTypeId].trim(), activeTypeId));
       }
     } catch (requestError) {
       setError(requestError.message || "Scan failed. Please try again.");
@@ -154,6 +161,42 @@ export default function Scanner() {
     setSelectedFile(null);
     setResult(null);
     setError("");
+  }
+
+  async function loadMediaMetadata(file) {
+    if (!file) return {};
+
+    return new Promise((resolve) => {
+      const metadata = {};
+      if (file.type.startsWith("image/")) {
+        const image = new Image();
+        image.onload = () => {
+          resolve({ width: image.naturalWidth, height: image.naturalHeight });
+          URL.revokeObjectURL(image.src);
+        };
+        image.onerror = () => resolve({});
+        image.src = URL.createObjectURL(file);
+        return;
+      }
+
+      if (file.type.startsWith("video/")) {
+        const video = document.createElement("video");
+        video.preload = "metadata";
+        video.onloadedmetadata = () => {
+          resolve({
+            width: video.videoWidth,
+            height: video.videoHeight,
+            duration: Math.round(video.duration),
+          });
+          URL.revokeObjectURL(video.src);
+        };
+        video.onerror = () => resolve({});
+        video.src = URL.createObjectURL(file);
+        return;
+      }
+
+      resolve({});
+    });
   }
 
   return (
@@ -220,8 +263,26 @@ export default function Scanner() {
 
 function contentTypeFor(typeId) {
   if (typeId === "email") return "email";
+  if (typeId === "sms") return "sms";
   if (typeId === "news") return "news";
   return "message";
+}
+
+function normalizeMediaResult(response, file) {
+  return {
+    input: file?.name || "Uploaded media",
+    risk_score: response.ai_likelihood ?? response.authenticity_score ?? 0,
+    classification: response.risk_level || response.result || "Unknown",
+    confidence: response.confidence,
+    summary: response.explanation || response.simple_result || response.summary || "The media scan completed.",
+    reasons: response.indicators?.map(indicatorText) || response.reasons || [],
+    recommendations: [response.recommended_action].filter(Boolean),
+    threat_intelligence: response.threat_intelligence,
+    media_type: response.media_type,
+    file_details: response.file,
+    forensic_metrics: response.forensic_metrics,
+    duration_seconds: response.duration_seconds,
+  };
 }
 
 function normalizeUrlResult(response, input) {

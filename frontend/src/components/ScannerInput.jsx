@@ -60,16 +60,22 @@ export default function ScannerInput({
                 type="file"
                 accept={activeType.id === 'image' ? 'image/*' : 'video/*'}
                 onChange={onFileChange}
-                disabled
+                disabled={isScanning}
               />
               <i className={`bi ${activeType.id === 'image' ? 'bi-cloud-upload' : 'bi-film'}`} />
-              <strong>{selectedFile?.name || `${activeType.label} scanning is coming soon`}</strong>
-              <span>This module will be enabled when production media analysis is available.</span>
+              <strong>
+                {selectedFile?.name || `Choose a ${activeType.label.toLowerCase()} file to upload`}
+              </strong>
+              <span>
+                {selectedFile
+                  ? `Ready to scan ${selectedFile.name}`
+                  : `Upload a ${activeType.label.toLowerCase()} and ScamShield will analyze it.`}
+              </span>
             </div>
           </div>
         ) : null}
 
-        {!activeType.comingSoon ? (
+        {!activeType.comingSoon && !["image", "video"].includes(activeType.id) ? (
           <button className="scanner-sample-button" type="button" onClick={onLoadSample}>
             <i className="bi bi-magic" />
             Use sample
