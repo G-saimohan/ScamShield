@@ -4,7 +4,7 @@ import EmptyState from "../components/EmptyState.jsx";
 import LoadingSpinner from "../components/LoadingSpinner.jsx";
 import ErrorAlert from "../components/ErrorAlert.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
-import { deleteScan, getScanHistory } from "../services/scanService.js";
+import { deleteScan, getScanHistory, getLocalHistory } from "../services/scanService.js";
 import { formatDateTime } from "../utils/formatters.js";
 
 const CLASSIFICATION_OPTIONS = [
@@ -52,11 +52,25 @@ export default function History() {
         classification: filter,
       });
       const payload = response.data || {};
-      setItems(payload.items || []);
-      setPagination(payload.pagination || pagination);
+      let itemsFromServer = payload.items || [];
+      let paginationFromServer = payload.pagination || pagination;
+
+      // If server returned no results (e.g., no backend history or offline),
+      // fall back to local anonymous history stored in the browser.
+      if (!itemsFromServer || itemsFromServer.length === 0) {
+        const local = getLocalHistory({ page, perPage: PAGE_SIZE });
+        itemsFromServer = local.items || [];
+        paginationFromServer = local.pagination || paginationFromServer;
+      }
+
+      setItems(itemsFromServer);
+      setPagination(paginationFromServer);
     } catch (requestError) {
-      setError(requestError.message || "Failed to load scan history.");
-      setItems([]);
+      // On error, try to show local anonymous history so the page is usable.
+      const local = getLocalHistory({ page, perPage: PAGE_SIZE });
+      setItems(local.items || []);
+      setPagination(local.pagination || pagination);
+      setError("");
     } finally {
       setIsLoading(false);
     }

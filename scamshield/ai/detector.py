@@ -16,6 +16,7 @@ except ImportError:  # Pillow is optional for non-media deployments.
 URGENCY_TERMS = {
     "urgent", "immediately", "now", "today", "within 24 hours", "limited time",
     "last warning", "final notice", "act fast", "verify now", "blocked",
+    "offer expires", "expires today", "claim now", "congratulations", "you won", "won",
 }
 
 SENSITIVE_TERMS = {
@@ -30,7 +31,7 @@ AUTHORITY_TERMS = {
 
 REWARD_TERMS = {
     "prize", "bonus", "cashback", "lottery", "refund", "free", "job offer",
-    "salary", "investment", "double your money", "gift",
+    "salary", "investment", "double your money", "gift", "you won", "congratulations", "claim your prize", "claim",
 }
 
 THREAT_TERMS = {
@@ -108,7 +109,7 @@ def analyze_content(content, content_type="message"):
 
     urgency = _contains_any(text, URGENCY_TERMS)
     if urgency:
-        score += min(24, len(urgency) * 8)
+        score += min(40, len(urgency) * 12)
         indicators.append({
             "name": "Urgency manipulation",
             "detail": "Pushes the user to act quickly without proper verification.",
@@ -135,11 +136,28 @@ def analyze_content(content, content_type="message"):
 
     rewards = _contains_any(text, REWARD_TERMS)
     if rewards:
-        score += min(18, len(rewards) * 6)
+        score += min(36, len(rewards) * 10)
         indicators.append({
             "name": "Reward or fake opportunity",
             "detail": "Uses prizes, refunds, jobs, or benefits to lower suspicion.",
             "matches": rewards[:5],
+        })
+
+    # Explicit high-weight signals for prize/lottery phrasing and currency mentions
+    if re.search(r"\byou won\b|\bcongratulations\b|\bclaim your prize\b|\bwon\b", text, re.I):
+        score += 30
+        indicators.append({
+            "name": "Prize/lottery wording",
+            "detail": "Mentions winning or claiming prizes which is common in prize scams.",
+            "matches": ["prize wording"],
+        })
+
+    if re.search(r"\u20B9|\brs\b|\brupees\b", text, re.I):
+        score += 18
+        indicators.append({
+            "name": "Monetary incentive",
+            "detail": "Mentions currency or monetary amounts which are often used in financial bait.",
+            "matches": ["currency mention"],
         })
 
     threats = _contains_any(text, THREAT_TERMS)
@@ -154,14 +172,29 @@ def analyze_content(content, content_type="message"):
     urls = _extract_urls(text)
     url_findings = [analyze_url(url) for url in urls[:3]]
     if urls:
-        score += 12
+        score += 18
         indicators.append({
             "name": "External link present",
             "detail": "Scam messages often move users to fake login or payment pages.",
             "matches": urls[:3],
         })
         if any(item["risk_score"] >= 55 for item in url_findings):
-            score += 18
+            score += 24
+
+    # If the text contains URL shorteners anywhere, increase risk substantially
+    for short in SHORTENERS:
+        if short in text.lower():
+            score += 30
+            indicators.append({
+                "name": "URL shortener detected",
+                "detail": "Shortened links hide final destinations and are commonly used in scams.",
+                "matches": [short],
+            })
+            break
+
+    # Synergy: urgency + reward signals amplify risk
+    if urgency and rewards:
+        score += 20
 
     if re.search(r"\b\d{6}\b", text):
         score += 12
@@ -174,7 +207,7 @@ def analyze_content(content, content_type="message"):
     if content_type == "email":
         email_signals = _contains_any(text, EMAIL_TERMS)
         if email_signals:
-            score += min(22, len(email_signals) * 7)
+            score += min(40, len(email_signals) * 10)
             indicators.append({
                 "name": "Email phishing style",
                 "detail": "The message contains email scam phrases like account suspension or password reset.",

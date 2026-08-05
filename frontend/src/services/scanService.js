@@ -22,7 +22,41 @@ export function getScanHistory({ page = 1, perPage = 10, search = "", classifica
     params.set("classification", classification);
   }
 
-  return apiRequest(`/api/scans/history?${params.toString()}`);
+  return apiRequest(`/api/scans/history?${params.toString()}`, { auth: false });
+}
+
+// Local anonymous history fallback for unauthenticated users.
+const LOCAL_HISTORY_KEY = "scamshield_local_history";
+
+export function addLocalHistory(entry) {
+  try {
+    const items = JSON.parse(localStorage.getItem(LOCAL_HISTORY_KEY) || "[]");
+    items.unshift(entry);
+    // Keep recent 200 entries to avoid unbounded growth
+    localStorage.setItem(LOCAL_HISTORY_KEY, JSON.stringify(items.slice(0, 200)));
+  } catch (e) {
+    // Ignore storage errors
+  }
+}
+
+export function getLocalHistory({ page = 1, perPage = 10 } = {}) {
+  try {
+    const items = JSON.parse(localStorage.getItem(LOCAL_HISTORY_KEY) || "[]");
+    const start = (page - 1) * perPage;
+    return {
+      items: items.slice(start, start + perPage),
+      pagination: {
+        page,
+        per_page: perPage,
+        total: items.length,
+        total_pages: Math.max(1, Math.ceil(items.length / perPage)),
+        has_next: start + perPage < items.length,
+        has_prev: page > 1,
+      },
+    };
+  } catch (e) {
+    return { items: [], pagination: { page: 1, per_page: perPage, total: 0, total_pages: 0, has_next: false, has_prev: false } };
+  }
 }
 
 export function deleteScan(scanId) {

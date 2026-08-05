@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import PageContainer from "../layouts/PageContainer.jsx";
 import ScannerHero from "../components/ScannerHero.jsx";
 import DetectionSelector from "../components/DetectionSelector.jsx";
@@ -93,7 +93,23 @@ export default function Scanner() {
     setResult(null);
     setError("");
     setSelectedFile(null);
+    // Smooth-scroll to the input area for the newly selected type
+    try {
+      const el = document.querySelector(".scanner-input-panel");
+      if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      const inputEl = document.getElementById(typeId === "url" ? "scanner-url" : "scanner-file");
+      if (inputEl && inputEl.focus) inputEl.focus({ preventScroll: true });
+    } catch (e) {}
   }
+
+  useEffect(() => {
+    if (result) {
+      try {
+        const el = document.querySelector(".scanner-result");
+        if (el && el.scrollIntoView) el.scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch (e) {}
+    }
+  }, [result]);
 
   function updateInput(value) {
     setInputs((current) => ({ ...current, [activeTypeId]: value }));
@@ -138,16 +154,50 @@ export default function Scanner() {
       if (activeTypeId === "url") {
         const response = await scanUrl(inputs.url.trim());
         setResult(normalizeUrlResult(response, inputs.url.trim()));
+        try {
+          // store anonymous history entry
+          const entry = {
+            scan_id: `local-${Date.now()}`,
+            url: inputs.url.trim(),
+            risk_score: response.risk_score ?? response.scam_probability ?? 0,
+            classification: response.classification || response.risk_level || "Unknown",
+            scan_date: new Date().toISOString(),
+          };
+          // dynamic import to avoid circular service deps in older bundles
+          import("../services/scanService.js").then((mod) => mod.addLocalHistory(entry)).catch(() => {});
+        } catch (e) {
+          // ignore local history failures
+        }
       } else if (activeTypeId === "image" || activeTypeId === "video") {
         const metadata = await loadMediaMetadata(selectedFile);
         const response = await analyzeMedia(selectedFile, metadata);
         setResult(normalizeMediaResult(response, selectedFile));
+        try {
+          const entry = {
+            scan_id: `local-${Date.now()}`,
+            url: selectedFile?.name || "uploaded-media",
+            risk_score: response.ai_likelihood ?? response.authenticity_score ?? 0,
+            classification: response.risk_level || response.result || "Unknown",
+            scan_date: new Date().toISOString(),
+          };
+          import("../services/scanService.js").then((mod) => mod.addLocalHistory(entry)).catch(() => {});
+        } catch (e) {}
       } else {
         const response = await analyzeContent(
           inputs[activeTypeId].trim(),
           contentTypeFor(activeTypeId),
         );
         setResult(normalizeTextResult(response, inputs[activeTypeId].trim(), activeTypeId));
+        try {
+          const entry = {
+            scan_id: `local-${Date.now()}`,
+            url: inputs[activeTypeId].slice(0, 140),
+            risk_score: response.scam_probability ?? response.risk_score ?? 0,
+            classification: response.risk_level || response.classification || "Unknown",
+            scan_date: new Date().toISOString(),
+          };
+          import("../services/scanService.js").then((mod) => mod.addLocalHistory(entry)).catch(() => {});
+        } catch (e) {}
       }
     } catch (requestError) {
       setError(requestError.message || "Scan failed. Please try again.");

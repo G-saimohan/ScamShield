@@ -102,14 +102,45 @@ class Config:
         since that combination is unsafe to deploy.
         """
         warnings: list[str] = []
-        if cls.SECRET_KEY == _INSECURE_SECRET_KEY:
+        # Prefer explicit environment variables for secrets. If the modern
+        # `SECRET_KEY` or `JWT_SECRET_KEY` env vars are not explicitly set by
+        # the process (for example they only come from a local `.env` file),
+        # treat the configuration as insecure. This makes validation
+        # deterministic for tests and avoids the situation where a repository
+        # `.env` file masks missing production secrets.
+        dotenv_values: dict[str, str] = {}
+        try:
+            if ENV_PATH.exists():
+                for line in ENV_PATH.read_text(encoding="utf-8").splitlines():
+                    stripped = line.strip()
+                    if not stripped or stripped.startswith("#") or "=" not in stripped:
+                        continue
+                    key, value = stripped.split("=", 1)
+                    dotenv_values[key.strip()] = value.strip()
+        except Exception:
+            # If we cannot read the .env file for any reason, fall back to
+            # normal environment checks — do not fail validation because of IO.
+            dotenv_values = {}
+
+        def _is_explicit_env(key: str) -> bool:
+            """Return True if an env var was explicitly provided (not only from .env)."""
+            val = os.environ.get(key)
+            if val is None:
+                return False
+            # If the value matches the one in the repository `.env`, consider
+            # it a fallback rather than an explicit production secret.
+            if key in dotenv_values and dotenv_values[key] == val:
+                return False
+            return True
+
+        if not _is_explicit_env("SECRET_KEY"):
             warnings.append(
-                "SECRET_KEY is using the insecure built-in default. "
+                "SECRET_KEY is using the insecure built-in default or local .env fallback. "
                 "Set the SECRET_KEY environment variable."
             )
-        if cls.JWT_SECRET_KEY == _INSECURE_JWT_SECRET_KEY:
+        if not _is_explicit_env("JWT_SECRET_KEY"):
             warnings.append(
-                "JWT_SECRET_KEY is using the insecure built-in default. "
+                "JWT_SECRET_KEY is using the insecure built-in default or local .env fallback. "
                 "Set the JWT_SECRET_KEY environment variable."
             )
         if cls.CORS_ORIGINS == "*":

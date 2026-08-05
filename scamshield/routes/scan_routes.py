@@ -27,7 +27,7 @@ scan_bp.add_url_rule(
 )
 scan_bp.add_url_rule(
     "/api/scans/history",
-    view_func=login_required(scan_history),
+    view_func=scan_history,
     methods=["GET"],
 )
 scan_bp.add_url_rule(

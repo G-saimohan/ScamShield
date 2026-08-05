@@ -916,10 +916,17 @@ a:focus-visible {
 
 .threat-table th,
 .history-table th {
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  font-size: 0.77rem;
+  color: var(--text-primary);
+  padding: 12px 10px;
+  vertical-align: middle;
+  font-weight: 700;
+}
+
+.threat-table td,
+.history-table td {
+  color: var(--text-primary);
+  padding: 12px 10px;
+  vertical-align: middle;
 }
 
 .threat-domain-cell,
