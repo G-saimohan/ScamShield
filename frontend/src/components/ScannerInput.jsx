@@ -16,7 +16,11 @@ export default function ScannerInput({
           <span className="scanner-eyebrow">Selected module</span>
           <h2>{activeType.label} Analysis</h2>
         </div>
-        {activeType.comingSoon ? <span className="coming-soon-pill">Coming Soon</span> : null}
+        {(() => {
+          const status = activeType.status ? activeType.status : activeType.comingSoon ? "coming" : "available";
+          const label = status === "available" ? "Available" : status === "beta" ? "Beta" : "Coming Soon";
+          return <span className={`feature-status ${status}`}>{label}</span>;
+        })()}
       </div>
 
       <form onSubmit={onSubmit}>

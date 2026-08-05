@@ -17,6 +17,14 @@ def login_required(view_func):
 
     @wraps(view_func)
     def wrapper(*args, **kwargs):
+        # Public endpoints: threat intelligence should remain public.
+        try:
+            path = request.path or ""
+            if path.startswith("/api/threats"):
+                return view_func(*args, **kwargs)
+        except Exception:
+            # If request context is unavailable, fall through to normal checks.
+            pass
         if session.get("authenticated"):
             g.current_user = session.get("user")
             return view_func(*args, **kwargs)

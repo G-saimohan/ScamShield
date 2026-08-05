@@ -17,7 +17,11 @@ export default function DetectionSelector({ types, activeTypeId, onSelect }) {
               <strong>{type.label}</strong>
               <small>{type.description}</small>
             </div>
-            {type.comingSoon ? <span className="scanner-status">Coming Soon</span> : <span className="scanner-status available">Available</span>}
+            {(() => {
+              const status = type.status ? type.status : type.comingSoon ? "coming" : "available";
+              const label = status === "available" ? "Available" : status === "beta" ? "Beta" : "Coming Soon";
+              return <span className={`feature-status ${status}`}>{label}</span>;
+            })()}
           </button>
         );
       })}

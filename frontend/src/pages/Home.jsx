@@ -6,36 +6,39 @@ const features = [
     title: "URL Detection",
     icon: "bi-link-45deg",
     description: "Inspect suspicious links, redirects, phishing portals, and spoofed domains.",
+    status: "available",
   },
   {
     title: "Email Detection",
     icon: "bi-envelope-shield",
     description: "Analyze phishing emails for urgency cues, credential traps, and impersonation.",
-    comingSoon: true,
+    status: "available",
   },
   {
     title: "SMS Detection",
     icon: "bi-chat-left-dots",
     description: "Flag scam messages, payment fraud, OTP theft attempts, and social engineering.",
-    comingSoon: true,
+    status: "available",
   },
   {
     title: "Fake News Detection",
     icon: "bi-newspaper",
     description: "Evaluate suspicious claims, viral posts, and manipulative text patterns.",
-    comingSoon: true,
+    status: "available",
   },
   {
     title: "AI Image Detection",
     icon: "bi-image",
     description: "Review generated images, edited documents, and visual authenticity signals.",
-    comingSoon: true,
+    // Image upload + analysis is functional; mark as beta
+    status: "beta",
   },
   {
     title: "Deepfake Video Detection",
     icon: "bi-camera-video",
     description: "Assess synthetic media indicators across video and audio forensic signals.",
-    comingSoon: true,
+    // Video upload + analysis is functional; mark as beta
+    status: "beta",
   },
 ];
 
